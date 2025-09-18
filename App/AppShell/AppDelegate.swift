@@ -1,15 +1,9 @@
-//
-//  AppDelegate.swift
-//  UIKitSetGame
-//
-//  Created by Juan Francisco Marcenaro Arellano on 18/09/25.
-//
+// App/AppShell/AppDelegate.swift
 
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
-
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
