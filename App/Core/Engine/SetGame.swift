@@ -14,7 +14,7 @@ struct SetGame {
     var score: Int = 0
     var cardsLeft: Int { deck.count }
     var canDealMore: Bool {
-        !deck.isEmpty && tableCards.count < 24 || setEvalStatus == .found
+        setEvalStatus == .found || (!deck.isEmpty && tableCards.count <= 21)
     }
 
     // MARK: - Initialization
@@ -60,14 +60,26 @@ struct SetGame {
         switch setEvalStatus {
         case .found:
             // My user tapped while a matched set was showing.
-            // I'll process that set and this tap is now "consumed".
-            drawAndReplaceMatchedCards()
+            // I'll process that set and then decide what to do with the tap.
+            let tappedWasInMatched = selectedCards.contains(where: { $0.id == card.id })
+            drawAndReplaceMatchedCards()  // this also clears selectedCards and resets status
+
+            // If the tapped card was part of the matched set, it's gone or replaced → no selection.
+            // If it wasn't part of the matched set, start a new selection with the tapped card.
+            if !tappedWasInMatched {
+                if tableCards.contains(where: { $0.id == card.id }) {
+                    selectedCards = [card]
+                } else if let sameCardNow = tableCards.first(where: { $0 == card }) {
+                    // fallback in case identity semantics change
+                    selectedCards = [sameCardNow]
+                }
+            }
 
         case .fail:
             // My user tapped after a failed match.
             // I'll clear the old selection and start a new one with the tapped card.
             selectedCards.removeAll()
-            //            selectedCards.append(card)
+            selectedCards.append(card)
             setEvalStatus = .none
 
         case .none:
