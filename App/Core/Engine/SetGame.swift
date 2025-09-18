@@ -12,6 +12,10 @@ struct SetGame {
     var selectedCards: [CardSet] = []
     var setEvalStatus: SetEvalStatus = .none
     var score: Int = 0
+    var cardsLeft: Int { deck.count }
+    var canDealMore: Bool {
+        !deck.isEmpty && tableCards.count < 24 || setEvalStatus == .found
+    }
 
     // MARK: - Initialization
 
@@ -20,6 +24,10 @@ struct SetGame {
     }
 
     // MARK: - Game State
+
+    mutating func newGame() {
+        generateDeck()
+    }
 
     /// My function to reset the game to a fresh state.
     mutating func generateDeck() {

@@ -1,9 +1,4 @@
-//
-//  SceneDelegate.swift
-//  UIKitSetGame
-//
-//  Created by Juan Francisco Marcenaro Arellano on 18/09/25.
-//
+// App/AppShell/SceneDelegate.swift
 
 import UIKit
 
@@ -11,14 +6,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = (scene as? UIWindowScene) else { return }
+    // SceneDelegate
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
+        print("⚪️ willConnectTo fired")
+        guard let windowScene = scene as? UIWindowScene else { return }
 
-        window = UIWindow(windowScene: windowScene)
-        let gameViewController = GameViewController()
-        let navitationController = UINavigationController(rootViewController: gameViewController)
-        window?.rootViewController = navitationController
-        window?.makeKeyAndVisible()
+        let nav = UINavigationController(rootViewController: SetGameViewController())
+        nav.navigationBar.prefersLargeTitles = true
+        let window = UIWindow(windowScene: windowScene)
+        window.rootViewController = nav
+        window.makeKeyAndVisible()
+        self.window = window
+        print("🟢 window visible")
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
@@ -49,6 +48,4 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // to restore the scene back to its current state.
     }
 
-
 }
-
