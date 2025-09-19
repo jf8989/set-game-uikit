@@ -46,7 +46,7 @@ final class SetGameViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        updateGridItemSize()  // keep grid correct on rotation/size changes
+        updateGridItemSize()  // re-flow on rotation or when bounds change
     }
 
     // MARK: Actions
@@ -66,7 +66,11 @@ final class SetGameViewController: UIViewController {
         scoreLabel.text = "Score: \(game.score)"
         cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
         dealButton.isEnabled = game.canDealMore
+
+        // Ensure the collection view has up-to-date bounds, then resize items.
+        view.layoutIfNeeded()
         updateGridItemSize()
+
         collectionView.reloadData()
         showEvaluationFeedbackIfNeeded()
     }
@@ -105,6 +109,7 @@ final class SetGameViewController: UIViewController {
 
     // MARK: Layout
     private func buildLayout() {
+        // Header
         scoreLabel.font = .preferredFont(forTextStyle: .title3)
         cardsLeftLabel.font = .preferredFont(forTextStyle: .title3)
 
@@ -114,25 +119,40 @@ final class SetGameViewController: UIViewController {
         headerRow.alignment = .center
         headerRow.translatesAutoresizingMaskIntoConstraints = false
 
+        // Toolbar
         let toolbar = UIStackView(arrangedSubviews: [newGameButton, dealButton])
         toolbar.axis = .horizontal
         toolbar.spacing = 12
         toolbar.distribution = .fillEqually
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
-        let rootStack = UIStackView(arrangedSubviews: [headerRow, collectionView, toolbar])
-        rootStack.axis = .vertical
-        rootStack.spacing = 12
-        rootStack.translatesAutoresizingMaskIntoConstraints = false
+        // Add all three directly (no root stack)
+        view.addSubview(headerRow)
+        view.addSubview(collectionView)
+        view.addSubview(toolbar)
 
-        view.addSubview(rootStack)
-
+        // Make the collection view own the space between header and toolbar
         NSLayoutConstraint.activate([
-            rootStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            rootStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            rootStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
-            rootStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            // Header at top
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            headerRow.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            headerRow.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+
+            // Toolbar at bottom
+            toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+
+            // Collection view fills the middle
+            collectionView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 12),
+            collectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
+            collectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -12),
         ])
+
+        // Help Auto Layout prefer giving height to the collection view
+        collectionView.setContentHuggingPriority(.defaultLow, for: .vertical)
+        collectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
     // MARK: Grid sizing to guarantee non-overlap up to 30 cards
