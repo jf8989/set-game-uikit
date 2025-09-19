@@ -3,12 +3,15 @@
 import UIKit
 
 // MARK: - Set Game Screen (Controller)
+
 final class SetGameViewController: UIViewController {
 
     // MARK: Model
+
     private var game = SetGame()
 
     // MARK: UI
+
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
     private lazy var collectionView: UICollectionView = {
@@ -27,6 +30,7 @@ final class SetGameViewController: UIViewController {
     private lazy var dealButton: UIButton = makeBorderedButton(title: "Deal 3", action: #selector(dealThree))
 
     // MARK: Lifecycle
+
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Set"
@@ -37,6 +41,7 @@ final class SetGameViewController: UIViewController {
     }
 
     // MARK: Actions
+
     @objc private func newGame() {
         game.newGame()
         updateUI()
@@ -48,6 +53,7 @@ final class SetGameViewController: UIViewController {
     }
 
     // MARK: UI Updates
+
     private func updateUI() {
         scoreLabel.text = "Score: \(game.score)"
         cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
@@ -56,6 +62,7 @@ final class SetGameViewController: UIViewController {
     }
 
     // MARK: Layout
+
     private func buildLayout() {
         // Header row: Score — Spacer — Deck Left
         scoreLabel.font = .preferredFont(forTextStyle: .title3)
@@ -91,6 +98,7 @@ final class SetGameViewController: UIViewController {
     }
 
     // MARK: Helpers
+
     private func makeBorderedButton(title: String, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
         var configuration = UIButton.Configuration.bordered()
@@ -127,6 +135,7 @@ final class SetGameViewController: UIViewController {
 }
 
 // MARK: - Ext: DataSource + Delegate
+
 extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         game.tableCards.count

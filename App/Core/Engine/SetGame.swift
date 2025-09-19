@@ -4,6 +4,7 @@ import Foundation
 
 /// Main rules for the Set card game.
 struct SetGame {
+    
     // MARK: - Properties
 
     var deck: [CardSet] = []
