@@ -2,11 +2,13 @@
 
 import UIKit
 
-// MARK: - Set Game Screen (Controller)
 final class SetGameViewController: UIViewController {
 
     // MARK: Model
     private var game = SetGame()
+
+    // Cache for layout recalculation: include size + capped count to fit
+    private var lastLayoutKey: (size: CGSize, fitCount: Int) = (.zero, 0)
 
     // MARK: Feedback state + service
     private var lastShownEvaluation: SetEvalStatus = .none
@@ -15,6 +17,7 @@ final class SetGameViewController: UIViewController {
     // MARK: UI
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
+
     private lazy var collectionView: UICollectionView = {
         let flowLayout = UICollectionViewFlowLayout()
         flowLayout.sectionInset = .zero
@@ -31,9 +34,12 @@ final class SetGameViewController: UIViewController {
         return collectionView
     }()
 
-    private lazy var newGameButton: UIButton = makeBorderedButton(title: "New Game", action: #selector(newGame))
-    private lazy var shuffleButton: UIButton = makeBorderedButton(title: "Shuffle", action: #selector(shuffleCards))
-    private lazy var dealButton: UIButton = makeBorderedButton(title: "Deal 3", action: #selector(dealThree))
+    private lazy var newGameButton: UIButton =
+        ButtonFactory.createBorderedButton(title: "New Game", target: self, action: #selector(newGame))
+    private lazy var shuffleButton: UIButton =
+        ButtonFactory.createBorderedButton(title: "Shuffle", target: self, action: #selector(shuffleCards))
+    private lazy var dealButton: UIButton =
+        ButtonFactory.createBorderedButton(title: "Deal 3", target: self, action: #selector(dealThree))
 
     // MARK: Lifecycle
     override func viewDidLoad() {
@@ -42,7 +48,7 @@ final class SetGameViewController: UIViewController {
         view.backgroundColor = .systemBackground
         buildLayout()
         newGame()
-        updateUI()
+        updateUI()  // full refresh
     }
 
     override func viewDidLayoutSubviews() {
@@ -54,21 +60,21 @@ final class SetGameViewController: UIViewController {
     @objc private func newGame() {
         game.newGame()
         lastShownEvaluation = .none
-        updateUI()
+        updateUI()  // full refresh
     }
 
     @objc private func shuffleCards() {
         game.shuffleTableCards()
         feedbackService.selectionChanged()
-        updateUI()
+        updateUI()  // full refresh (content positions changed)
     }
 
     @objc private func dealThree() {
         game.dealCards()  // replace if matched, else add 3
-        updateUI()
+        updateUI()  // full refresh (count/content changed)
     }
 
-    // MARK: UI Updates
+    // MARK: UI Updates (full refresh)
     private func updateUI() {
         scoreLabel.text = "Score: \(game.score)"
         cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
@@ -85,7 +91,7 @@ final class SetGameViewController: UIViewController {
         showEvaluationFeedbackIfNeeded()
     }
 
-    // MARK: Match/Mismatch Feedback (#6)
+    // MARK: Match/Mismatch Feedback
     private func indexPathsForSelectedCards() -> [IndexPath] {
         SelectionIndexHelper.indexPaths(for: game.selectedCards, in: game.tableCards)
     }
@@ -193,9 +199,15 @@ final class SetGameViewController: UIViewController {
         let contentSize = collectionView.bounds.size
         guard contentSize.width > 0, contentSize.height > 0 else { return }
 
+        // Include card count in the cache key so we recompute when count changes
+        let actualCount = max(game.tableCards.count, 1)
+        let fitCount = min(actualCount, Theme.Layout.freezeAtCount)
+        let currentKey = (size: contentSize, fitCount: fitCount)
+        if currentKey == lastLayoutKey { return }
+
         let itemSize = GridLayoutHelper.itemSize(
             for: contentSize,
-            itemCount: max(game.tableCards.count, 1),
+            itemCount: actualCount,
             aspectRatio: Theme.Layout.cardAspectRatio,
             interitemSpacing: flowLayout.minimumInteritemSpacing,
             lineSpacing: flowLayout.minimumLineSpacing,
@@ -206,16 +218,7 @@ final class SetGameViewController: UIViewController {
             flowLayout.itemSize = itemSize
             flowLayout.invalidateLayout()
         }
-    }
-
-    // MARK: Helpers
-    private func makeBorderedButton(title: String, action: Selector) -> UIButton {
-        let button = UIButton(type: .system)
-        var configuration = UIButton.Configuration.bordered()
-        configuration.title = title
-        button.configuration = configuration
-        button.addTarget(self, action: action, for: .touchUpInside)
-        return button
+        lastLayoutKey = currentKey
     }
 }
 
@@ -246,13 +249,13 @@ extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDel
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let tappedCard = game.tableCards[indexPath.item]
         game.choose(this: tappedCard)
-        updateUI()
+        updateUI()  // full refresh to keep replacement atomic
     }
 
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
         let tappedCard = game.tableCards[indexPath.item]
         game.choose(this: tappedCard)
-        updateUI()
+        updateUI()  // full refresh for consistency
     }
 }
 
