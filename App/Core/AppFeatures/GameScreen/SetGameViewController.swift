@@ -15,7 +15,7 @@ final class SetGameViewController: UIViewController {
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
     private lazy var collectionView: UICollectionView = {
-        // Use a flow layout so we can compute item sizes to fit up to 24 cards.
+        // Flow layout so we can resize items as the count grows (up to 30, then freeze size).
         let flowLayout = UICollectionViewFlowLayout()
         flowLayout.sectionInset = .zero
         flowLayout.minimumInteritemSpacing = 6
@@ -32,6 +32,7 @@ final class SetGameViewController: UIViewController {
     }()
 
     private lazy var newGameButton: UIButton = makeBorderedButton(title: "New Game", action: #selector(newGame))
+    private lazy var shuffleButton: UIButton = makeBorderedButton(title: "Shuffle", action: #selector(shuffleCards))
     private lazy var dealButton: UIButton = makeBorderedButton(title: "Deal 3", action: #selector(dealThree))
 
     // MARK: Lifecycle
@@ -53,6 +54,12 @@ final class SetGameViewController: UIViewController {
     @objc private func newGame() {
         game.newGame()
         lastShownEvaluation = .none
+        updateUI()
+    }
+
+    @objc private func shuffleCards() {
+        game.shuffleTableCards()
+        UISelectionFeedbackGenerator().selectionChanged()
         updateUI()
     }
 
@@ -119,8 +126,8 @@ final class SetGameViewController: UIViewController {
         headerRow.alignment = .center
         headerRow.translatesAutoresizingMaskIntoConstraints = false
 
-        // Toolbar
-        let toolbar = UIStackView(arrangedSubviews: [newGameButton, dealButton])
+        // Toolbar (New • Shuffle • Deal 3)
+        let toolbar = UIStackView(arrangedSubviews: [newGameButton, shuffleButton, dealButton])
         toolbar.axis = .horizontal
         toolbar.spacing = 12
         toolbar.distribution = .fillEqually
@@ -131,7 +138,6 @@ final class SetGameViewController: UIViewController {
         view.addSubview(collectionView)
         view.addSubview(toolbar)
 
-        // Make the collection view own the space between header and toolbar
         NSLayoutConstraint.activate([
             // Header at top
             headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
@@ -150,12 +156,12 @@ final class SetGameViewController: UIViewController {
             collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -12),
         ])
 
-        // Help Auto Layout prefer giving height to the collection view
+        // Prefer giving height to the collection view
         collectionView.setContentHuggingPriority(.defaultLow, for: .vertical)
         collectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
-    // MARK: Grid sizing to guarantee non-overlap up to 30 cards
+    // MARK: Grid sizing to guarantee non-overlap up to 30 cards (then freeze size)
     private func updateGridItemSize() {
         guard let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
 
@@ -181,7 +187,6 @@ final class SetGameViewController: UIViewController {
         let itemWidth = floor((contentSize.width - totalInteritem) / CGFloat(numberOfColumns))
         let itemHeight = floor(itemWidth / aspectRatio)
 
-        // This size is now “frozen” once actualCardCount >= 30; additional cards will scroll.
         flowLayout.itemSize = CGSize(width: itemWidth, height: itemHeight)
         flowLayout.invalidateLayout()
     }
