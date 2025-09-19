@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Factories/AttributedSymbolFactory.swift
+// App/Core/AppFeatures/GameScreen/Factory/AttributedSymbolFactory.swift
 
 import UIKit
 

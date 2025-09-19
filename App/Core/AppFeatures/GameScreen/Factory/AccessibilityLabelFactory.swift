@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Factories/AccessibilityLabelFactory.swift
+// App/Core/AppFeatures/GameScreen/Factory/AccessibilityLabelFactory.swift
 
 import Foundation
 

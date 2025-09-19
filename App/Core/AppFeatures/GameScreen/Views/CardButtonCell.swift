@@ -13,7 +13,7 @@ extension CATransaction {
 }
 
 final class CardButtonCell: UICollectionViewCell {
-    static let reuseID = "CardButtonCell"
+    static let reuseIdentifier = "CardButtonCell"
 
     private let cardButton = UIButton(type: .system)
     private var lastConfiguredCard: CardSet?

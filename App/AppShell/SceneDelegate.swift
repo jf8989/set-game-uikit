@@ -8,7 +8,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     // SceneDelegate
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
-        print("⚪️ willConnectTo fired")
+        //        print("⚪️ willConnectTo fired")
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let nav = UINavigationController(rootViewController: SetGameViewController())
@@ -17,7 +17,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = nav
         window.makeKeyAndVisible()
         self.window = window
-        print("🟢 window visible")
+        //        print("🟢 window visible")
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {

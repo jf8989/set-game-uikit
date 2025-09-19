@@ -23,7 +23,7 @@ final class SetGameViewController: UIViewController {
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .systemBackground
-        collectionView.register(CardButtonCell.self, forCellWithReuseIdentifier: CardButtonCell.reuseID)
+        collectionView.register(CardButtonCell.self, forCellWithReuseIdentifier: CardButtonCell.reuseIdentifier)
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.allowsMultipleSelection = true
@@ -232,7 +232,7 @@ extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDel
         let card = game.tableCards[indexPath.item]
         let cell =
             collectionView.dequeueReusableCell(
-                withReuseIdentifier: CardButtonCell.reuseID,
+                withReuseIdentifier: CardButtonCell.reuseIdentifier,
                 for: indexPath
             ) as! CardButtonCell
 
