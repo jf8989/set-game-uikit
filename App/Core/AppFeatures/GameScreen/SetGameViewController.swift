@@ -111,11 +111,10 @@ final class SetGameViewController: UIViewController {
         haptic.notificationOccurred(currentEvaluation == .found ? .success : .error)
 
         let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
-        for indexPath in indexPathsForSelectedCards() {
-            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
-                cell.flashFeedback(color: flashUIColor)
-            }
+        forEachSelectedCell { cell in
+            cell.flashFeedback(color: flashUIColor)
         }
+
         lastShownEvaluation = currentEvaluation
     }
 
@@ -235,6 +234,15 @@ final class SetGameViewController: UIViewController {
         button.configuration = configuration
         button.addTarget(self, action: action, for: .touchUpInside)
         return button
+    }
+
+    // Operate on each currently selected visible cell.
+    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
+        for indexPath in indexPathsForSelectedCards() {
+            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
+                action(cell)
+            }
+        }
     }
 }
 
