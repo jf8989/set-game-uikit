@@ -59,8 +59,8 @@ struct SetGame {
     mutating func choose(this card: CardSet) {
         switch setEvalStatus {
         case .found:
-            // My user tapped while a matched set was showing.
-            // I'll process that set and then decide what to do with the tap.
+            // User tapped while a matched set was showing.
+            // Process that set and then decide what to do with the tap.
             let tappedWasInMatched = selectedCards.contains(where: { $0.id == card.id })
             drawAndReplaceMatchedCards()  // this also clears selectedCards and resets status
 
@@ -76,23 +76,23 @@ struct SetGame {
             }
 
         case .fail:
-            // My user tapped after a failed match.
-            // I'll clear the old selection and start a new one with the tapped card.
+            // User tapped after a failed match.
+            // Clear the old selection and start a new one with the tapped card.
             selectedCards.removeAll()
             selectedCards.append(card)
             setEvalStatus = .none
 
         case .none:
-            // This is my normal selection flow.
+            // This is the normal selection flow.
             if let index = selectedCards.firstIndex(where: { $0.id == card.id }) {
-                // The user tapped an already selected card, so I'll deselect it.
+                // User tapped an already selected card, so I'll deselect it.
                 selectedCards.remove(at: index)
             } else if selectedCards.count < 3 {
-                // The user tapped a new card, so I'll add it to the selection.
+                // User tapped a new card, so I'll add it to the selection.
                 selectedCards.append(card)
             }
 
-            // I'll evaluate for a set only when my user has picked exactly 3 cards.
+            // Evaluate for a set only when my user has picked exactly 3 cards.
             if selectedCards.count == 3 {
                 if selectedCards.isSet {
                     setEvalStatus = .found
