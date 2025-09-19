@@ -50,14 +50,22 @@ final class CardButtonCell: UICollectionViewCell {
         lastIsSelected = isSelected
         lastEvaluation = evaluation
 
+        // Avoid animating background resets
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         contentView.backgroundColor = .systemBackground
+        CATransaction.commit()
+
         setSelectionBorder(isSelected: isSelected, evaluation: evaluation)
 
-        // Build attributed title sized to fit the cell nicely.
-        cardButton.setAttributedTitle(
-            makeAttributedSymbols(for: card, in: contentView.bounds.size),
-            for: .normal
-        )
+        // Avoid UILabel/title cross-fades
+        UIView.performWithoutAnimation {
+            cardButton.setAttributedTitle(
+                makeAttributedSymbols(for: card, in: contentView.bounds.size),
+                for: .normal
+            )
+            cardButton.layoutIfNeeded()
+        }
     }
 
     func setSelectionBorder(isSelected: Bool, evaluation: SetEvalStatus) {
@@ -69,8 +77,13 @@ final class CardButtonCell: UICollectionViewCell {
             case .none: return .systemBlue
             }
         }()
+
+        // No implicit layer animations for border changes
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         contentView.layer.borderWidth = isSelected ? 3 : 2
         contentView.layer.borderColor = borderUIColor.cgColor
+        CATransaction.commit()
     }
 
     /// Brief visual flash to indicate match/mismatch across the selected trio.
@@ -171,15 +184,18 @@ final class CardButtonCell: UICollectionViewCell {
         }
     }
 
-    // If the cell resizes (rotation, split view), rebuild the text to maintain balance.
+    // Keep the reflow on rotation/resize, but don’t animate changes.
     override func layoutSubviews() {
         super.layoutSubviews()
-        if let card = lastConfiguredCard {
+        guard let card = lastConfiguredCard else { return }
+
+        UIView.performWithoutAnimation {
             cardButton.setAttributedTitle(
                 makeAttributedSymbols(for: card, in: contentView.bounds.size),
                 for: .normal
             )
-            setSelectionBorder(isSelected: lastIsSelected, evaluation: lastEvaluation)
+            cardButton.layoutIfNeeded()
         }
+        setSelectionBorder(isSelected: lastIsSelected, evaluation: lastEvaluation)
     }
 }

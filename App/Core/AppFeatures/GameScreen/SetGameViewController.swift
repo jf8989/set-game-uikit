@@ -78,7 +78,12 @@ final class SetGameViewController: UIViewController {
         view.layoutIfNeeded()
         updateGridItemSize()
 
-        collectionView.reloadData()
+        // Reload without animations to avoid “blinking” cells.
+        UIView.performWithoutAnimation {
+            collectionView.reloadData()
+            collectionView.layoutIfNeeded()
+        }
+
         showEvaluationFeedbackIfNeeded()
     }
 
