@@ -4,7 +4,7 @@ import Foundation
 
 /// Main rules for the Set card game.
 struct SetGame {
-    
+
     // MARK: - Properties
 
     var deck: [CardSet] = []
@@ -15,7 +15,7 @@ struct SetGame {
     var score: Int = 0
     var cardsLeft: Int { deck.count }
     var canDealMore: Bool {
-        setEvalStatus == .found || (!deck.isEmpty && tableCards.count <= 21)
+        setEvalStatus == .found || !deck.isEmpty
     }
 
     // MARK: - Initialization

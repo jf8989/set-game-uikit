@@ -3,20 +3,25 @@
 import UIKit
 
 // MARK: - Set Game Screen (Controller)
-
 final class SetGameViewController: UIViewController {
 
     // MARK: Model
-
     private var game = SetGame()
 
-    // MARK: UI
+    // MARK: Feedback State
+    private var lastShownEvaluation: SetEvalStatus = .none
 
+    // MARK: UI
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
     private lazy var collectionView: UICollectionView = {
-        let layout = Self.makeGridLayout()
-        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        // Use a flow layout so we can compute item sizes to fit up to 24 cards.
+        let flowLayout = UICollectionViewFlowLayout()
+        flowLayout.sectionInset = .zero
+        flowLayout.minimumInteritemSpacing = 6
+        flowLayout.minimumLineSpacing = 6
+
+        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .systemBackground
         collectionView.register(CardButtonCell.self, forCellWithReuseIdentifier: CardButtonCell.reuseID)
         collectionView.dataSource = self
@@ -30,7 +35,6 @@ final class SetGameViewController: UIViewController {
     private lazy var dealButton: UIButton = makeBorderedButton(title: "Deal 3", action: #selector(dealThree))
 
     // MARK: Lifecycle
-
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Set"
@@ -40,10 +44,15 @@ final class SetGameViewController: UIViewController {
         updateUI()
     }
 
-    // MARK: Actions
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateGridItemSize()  // keep grid correct on rotation/size changes
+    }
 
+    // MARK: Actions
     @objc private func newGame() {
         game.newGame()
+        lastShownEvaluation = .none
         updateUI()
     }
 
@@ -53,35 +62,64 @@ final class SetGameViewController: UIViewController {
     }
 
     // MARK: UI Updates
-
     private func updateUI() {
         scoreLabel.text = "Score: \(game.score)"
         cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
         dealButton.isEnabled = game.canDealMore
+        updateGridItemSize()
         collectionView.reloadData()
+        showEvaluationFeedbackIfNeeded()
+    }
+
+    // MARK: Match/Mismatch Feedback (#6)
+    private func indexPathsForSelectedCards() -> [IndexPath] {
+        let selectedIdentifiers = Set(game.selectedCards.map { $0.id })
+        var selectedIndexPaths: [IndexPath] = []
+        for (cardIndex, card) in game.tableCards.enumerated() {
+            if selectedIdentifiers.contains(card.id) {
+                selectedIndexPaths.append(IndexPath(item: cardIndex, section: 0))
+            }
+        }
+        return selectedIndexPaths
+    }
+
+    private func showEvaluationFeedbackIfNeeded() {
+        guard game.selectedCards.count == 3 else {
+            lastShownEvaluation = .none
+            return
+        }
+        let currentEvaluation = game.setEvalStatus
+        guard currentEvaluation != .none, currentEvaluation != lastShownEvaluation else { return }
+
+        let haptic = UINotificationFeedbackGenerator()
+        haptic.notificationOccurred(currentEvaluation == .found ? .success : .error)
+
+        let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
+        for indexPath in indexPathsForSelectedCards() {
+            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
+                cell.flashFeedback(color: flashUIColor)
+            }
+        }
+        lastShownEvaluation = currentEvaluation
     }
 
     // MARK: Layout
-
     private func buildLayout() {
-        // Header row: Score — Spacer — Deck Left
         scoreLabel.font = .preferredFont(forTextStyle: .title3)
         cardsLeftLabel.font = .preferredFont(forTextStyle: .title3)
 
-        let spacer = UIView()
-        let headerRow = UIStackView(arrangedSubviews: [scoreLabel, spacer, cardsLeftLabel])
+        let spacerView = UIView()
+        let headerRow = UIStackView(arrangedSubviews: [scoreLabel, spacerView, cardsLeftLabel])
         headerRow.axis = .horizontal
         headerRow.alignment = .center
         headerRow.translatesAutoresizingMaskIntoConstraints = false
 
-        // Bottom toolbar
         let toolbar = UIStackView(arrangedSubviews: [newGameButton, dealButton])
         toolbar.axis = .horizontal
         toolbar.spacing = 12
         toolbar.distribution = .fillEqually
         toolbar.translatesAutoresizingMaskIntoConstraints = false
 
-        // Root layout
         let rootStack = UIStackView(arrangedSubviews: [headerRow, collectionView, toolbar])
         rootStack.axis = .vertical
         rootStack.spacing = 12
@@ -97,8 +135,69 @@ final class SetGameViewController: UIViewController {
         ])
     }
 
-    // MARK: Helpers
+    // MARK: Grid sizing to guarantee non-overlap up to 30 cards
+    private func updateGridItemSize() {
+        guard let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
 
+        let aspectRatio: CGFloat = 2.0 / 3.0
+        let interitemSpacing = flowLayout.minimumInteritemSpacing
+        let lineSpacing = flowLayout.minimumLineSpacing
+
+        let contentSize = collectionView.bounds.size
+        let actualCardCount = max(game.tableCards.count, 1)
+
+        // Freeze item size once we hit 30 cards.
+        let cardCountToFit = min(actualCardCount, 30)
+
+        let numberOfColumns = columnsThatFit(
+            itemCount: cardCountToFit,
+            containerSize: contentSize,
+            aspectRatio: aspectRatio,
+            interitemSpacing: interitemSpacing,
+            lineSpacing: lineSpacing
+        )
+
+        let totalInteritem = CGFloat(max(0, numberOfColumns - 1)) * interitemSpacing
+        let itemWidth = floor((contentSize.width - totalInteritem) / CGFloat(numberOfColumns))
+        let itemHeight = floor(itemWidth / aspectRatio)
+
+        // This size is now “frozen” once actualCardCount >= 30; additional cards will scroll.
+        flowLayout.itemSize = CGSize(width: itemWidth, height: itemHeight)
+        flowLayout.invalidateLayout()
+    }
+
+    /// Finds a column count that lets all items fit vertically without overlap (scales down as needed).
+    private func columnsThatFit(
+        itemCount: Int,
+        containerSize: CGSize,
+        aspectRatio: CGFloat,
+        interitemSpacing: CGFloat,
+        lineSpacing: CGFloat
+    ) -> Int {
+        guard itemCount > 0 else { return 1 }
+
+        var testColumns = 1
+        var requiredRows = itemCount
+
+        repeat {
+            let totalInteritemSpacing = CGFloat(max(0, testColumns - 1)) * interitemSpacing
+            let candidateItemWidth = (containerSize.width - totalInteritemSpacing) / CGFloat(testColumns)
+            let candidateItemHeight = candidateItemWidth / aspectRatio
+            let totalRowsHeight = CGFloat(requiredRows) * candidateItemHeight
+            let totalRowSpacings = CGFloat(max(0, requiredRows - 1)) * lineSpacing
+            let requiredHeight = totalRowsHeight + totalRowSpacings
+
+            if requiredHeight <= containerSize.height {
+                return testColumns
+            }
+            testColumns += 1
+            requiredRows = Int(ceil(Double(itemCount) / Double(testColumns)))
+        } while testColumns <= itemCount
+
+        return testColumns
+    }
+
+    // MARK: Helpers
     private func makeBorderedButton(title: String, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
         var configuration = UIButton.Configuration.bordered()
@@ -107,35 +206,9 @@ final class SetGameViewController: UIViewController {
         button.addTarget(self, action: action, for: .touchUpInside)
         return button
     }
-
-    /// Fixed 4-column grid (room for 24 = 4×6). Keeps ~2:3 aspect ratio per card.
-    private static func makeGridLayout() -> UICollectionViewCompositionalLayout {
-        let numberOfColumns = 4
-
-        let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .fractionalHeight(1.0)
-        )
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        item.contentInsets = .init(top: 6, leading: 6, bottom: 6, trailing: 6)
-
-        let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .fractionalWidth(1.0 / CGFloat(numberOfColumns) * 1.5)  // 2:3 ratio
-        )
-        let group = NSCollectionLayoutGroup.horizontal(
-            layoutSize: groupSize,
-            repeatingSubitem: item,
-            count: numberOfColumns
-        )
-
-        let section = NSCollectionLayoutSection(group: group)
-        return UICollectionViewCompositionalLayout(section: section)
-    }
 }
 
-// MARK: - Ext: DataSource + Delegate
-
+// MARK: - DataSource + Delegate
 extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         game.tableCards.count
@@ -152,12 +225,10 @@ extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDel
                 for: indexPath
             ) as! CardButtonCell
 
-        // Placeholder appearance until we switch to NSAttributedString (req #11).
-        cell.configurePlaceholderAppearance()
-
-        // Basic selection ring; full match/mismatch feedback comes next.
         let isCurrentlySelected = game.selectedCards.contains(card)
-        cell.setSelectionBorder(isSelected: isCurrentlySelected)
+        let evaluationStatus = game.setEvalStatus  // .none / .found / .fail
+
+        cell.configure(with: card, isSelected: isCurrentlySelected, evaluation: evaluationStatus)
         return cell
     }
 
