@@ -2,6 +2,23 @@
 
 import UIKit
 
+// MARK: - CATransaction convenience
+extension CATransaction {
+    fileprivate static func withoutActions(_ body: () -> Void) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        body()
+        CATransaction.commit()
+    }
+}
+
+// MARK: - Card UI constants
+private enum CardUI {
+    static let cornerRadius: CGFloat = 16
+    static let contentInset: CGFloat = 8
+    static let lineSpacing: CGFloat = 6
+}
+
 final class CardButtonCell: UICollectionViewCell {
     static let reuseID = "CardButtonCell"
 
@@ -12,7 +29,7 @@ final class CardButtonCell: UICollectionViewCell {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        contentView.layer.cornerRadius = 16
+        contentView.layer.cornerRadius = CardUI.cornerRadius
         contentView.layer.masksToBounds = true
 
         cardButton.translatesAutoresizingMaskIntoConstraints = false
@@ -24,10 +41,10 @@ final class CardButtonCell: UICollectionViewCell {
 
         contentView.addSubview(cardButton)
         NSLayoutConstraint.activate([
-            cardButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
-            cardButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
-            cardButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
-            cardButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -8),
+            cardButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: CardUI.contentInset),
+            cardButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: CardUI.contentInset),
+            cardButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -CardUI.contentInset),
+            cardButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -CardUI.contentInset),
         ])
     }
 
@@ -50,13 +67,16 @@ final class CardButtonCell: UICollectionViewCell {
         lastIsSelected = isSelected
         lastEvaluation = evaluation
 
-        // Avoid animating background resets
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        contentView.backgroundColor = .systemBackground
-        CATransaction.commit()
-
+        // Background/color updates without implicit animations
+        CATransaction.withoutActions {
+            contentView.backgroundColor = .systemBackground
+        }
         setSelectionBorder(isSelected: isSelected, evaluation: evaluation)
+
+        // Accessible description
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityLabel = accessibilityText(for: card)
 
         // Avoid UILabel/title cross-fades
         UIView.performWithoutAnimation {
@@ -78,12 +98,10 @@ final class CardButtonCell: UICollectionViewCell {
             }
         }()
 
-        // No implicit layer animations for border changes
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        contentView.layer.borderWidth = isSelected ? 3 : 2
-        contentView.layer.borderColor = borderUIColor.cgColor
-        CATransaction.commit()
+        CATransaction.withoutActions {
+            contentView.layer.borderWidth = isSelected ? 3 : 2
+            contentView.layer.borderColor = borderUIColor.cgColor
+        }
     }
 
     /// Brief visual flash to indicate match/mismatch across the selected trio.
@@ -110,9 +128,9 @@ final class CardButtonCell: UICollectionViewCell {
         let linesCount = card.number.rawValue
 
         // Layout constants
-        let horizontalPadding: CGFloat = 8
-        let verticalPadding: CGFloat = 8
-        let lineSpacing: CGFloat = 6
+        let horizontalPadding: CGFloat = CardUI.contentInset
+        let verticalPadding: CGFloat = CardUI.contentInset
+        let lineSpacing: CGFloat = CardUI.lineSpacing
 
         let usableWidth = max(0, containerSize.width - horizontalPadding * 2)
         let usableHeight = max(0, containerSize.height - verticalPadding * 2)
@@ -182,6 +200,42 @@ final class CardButtonCell: UICollectionViewCell {
         case .green: return .systemGreen
         case .purple: return .systemPurple
         }
+    }
+
+    private func accessibilityText(for card: CardSet) -> String {
+        let numberText: String = {
+            switch card.number {
+            case .one: return "one"
+            case .two: return "two"
+            case .three: return "three"
+            }
+        }()
+
+        let shadingText: String = {
+            switch card.shading {
+            case .solid: return "solid"
+            case .open: return "open"
+            case .striped: return "striped"
+            }
+        }()
+
+        let colorText: String = {
+            switch card.color {
+            case .red: return "red"
+            case .green: return "green"
+            case .purple: return "purple"
+            }
+        }()
+
+        let symbolText: String = {
+            switch card.symbol {
+            case .diamond: return "diamond"
+            case .oval: return "oval"
+            case .squiggle: return "squiggle"
+            }
+        }()
+
+        return "\(numberText) \(shadingText) \(colorText) \(symbolText)"
     }
 
     // Keep the reflow on rotation/resize, but don’t animate changes.

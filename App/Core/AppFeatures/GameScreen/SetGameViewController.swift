@@ -2,6 +2,13 @@
 
 import UIKit
 
+// MARK: - Layout constants
+private enum Layout {
+    static let outerPadding: CGFloat = 12
+    static let interitem: CGFloat = 6
+    static let lineSpacing: CGFloat = 6
+}
+
 // MARK: - Set Game Screen (Controller)
 final class SetGameViewController: UIViewController {
 
@@ -11,6 +18,10 @@ final class SetGameViewController: UIViewController {
     // MARK: Feedback State
     private var lastShownEvaluation: SetEvalStatus = .none
 
+    // Reused haptics
+    private let selectionHaptic = UISelectionFeedbackGenerator()
+    private let notificationHaptic = UINotificationFeedbackGenerator()
+
     // MARK: UI
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
@@ -18,8 +29,8 @@ final class SetGameViewController: UIViewController {
         // Flow layout so we can resize items as the count grows (up to 30, then freeze size).
         let flowLayout = UICollectionViewFlowLayout()
         flowLayout.sectionInset = .zero
-        flowLayout.minimumInteritemSpacing = 6
-        flowLayout.minimumLineSpacing = 6
+        flowLayout.minimumInteritemSpacing = Layout.interitem
+        flowLayout.minimumLineSpacing = Layout.lineSpacing
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .systemBackground
@@ -41,6 +52,8 @@ final class SetGameViewController: UIViewController {
         title = "Set"
         view.backgroundColor = .systemBackground
         buildLayout()
+        selectionHaptic.prepare()
+        notificationHaptic.prepare()
         newGame()
         updateUI()
     }
@@ -59,7 +72,7 @@ final class SetGameViewController: UIViewController {
 
     @objc private func shuffleCards() {
         game.shuffleTableCards()
-        UISelectionFeedbackGenerator().selectionChanged()
+        selectionHaptic.selectionChanged()
         updateUI()
     }
 
@@ -99,6 +112,14 @@ final class SetGameViewController: UIViewController {
         return selectedIndexPaths
     }
 
+    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
+        for indexPath in indexPathsForSelectedCards() {
+            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
+                action(cell)
+            }
+        }
+    }
+
     private func showEvaluationFeedbackIfNeeded() {
         guard game.selectedCards.count == 3 else {
             lastShownEvaluation = .none
@@ -107,8 +128,7 @@ final class SetGameViewController: UIViewController {
         let currentEvaluation = game.setEvalStatus
         guard currentEvaluation != .none, currentEvaluation != lastShownEvaluation else { return }
 
-        let haptic = UINotificationFeedbackGenerator()
-        haptic.notificationOccurred(currentEvaluation == .found ? .success : .error)
+        notificationHaptic.notificationOccurred(currentEvaluation == .found ? .success : .error)
 
         let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
         forEachSelectedCell { cell in
@@ -144,20 +164,41 @@ final class SetGameViewController: UIViewController {
 
         NSLayoutConstraint.activate([
             // Header at top
-            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            headerRow.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            headerRow.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
+            headerRow.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: Layout.outerPadding),
+            headerRow.leadingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: Layout.outerPadding
+            ),
+            headerRow.trailingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
+                constant: -Layout.outerPadding
+            ),
 
             // Toolbar at bottom
-            toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            toolbar.leadingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: Layout.outerPadding
+            ),
+            toolbar.trailingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
+                constant: -Layout.outerPadding
+            ),
+            toolbar.bottomAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.bottomAnchor,
+                constant: -Layout.outerPadding
+            ),
 
             // Collection view fills the middle
-            collectionView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: 12),
-            collectionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
-            collectionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
-            collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -12),
+            collectionView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: Layout.outerPadding),
+            collectionView.leadingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
+                constant: Layout.outerPadding
+            ),
+            collectionView.trailingAnchor.constraint(
+                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
+                constant: -Layout.outerPadding
+            ),
+            collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -Layout.outerPadding),
         ])
 
         // Prefer giving height to the collection view
@@ -174,6 +215,8 @@ final class SetGameViewController: UIViewController {
         let lineSpacing = flowLayout.minimumLineSpacing
 
         let contentSize = collectionView.bounds.size
+        guard contentSize.width > 0, contentSize.height > 0 else { return }
+
         let actualCardCount = max(game.tableCards.count, 1)
 
         // Freeze item size once we hit 30 cards.
@@ -191,8 +234,11 @@ final class SetGameViewController: UIViewController {
         let itemWidth = floor((contentSize.width - totalInteritem) / CGFloat(numberOfColumns))
         let itemHeight = floor(itemWidth / aspectRatio)
 
-        flowLayout.itemSize = CGSize(width: itemWidth, height: itemHeight)
-        flowLayout.invalidateLayout()
+        let newSize = CGSize(width: itemWidth, height: itemHeight)
+        if flowLayout.itemSize != newSize {
+            flowLayout.itemSize = newSize
+            flowLayout.invalidateLayout()
+        }
     }
 
     /// Finds a column count that lets all items fit vertically without overlap (scales down as needed).
@@ -223,7 +269,8 @@ final class SetGameViewController: UIViewController {
             requiredRows = Int(ceil(Double(itemCount) / Double(testColumns)))
         } while testColumns <= itemCount
 
-        return testColumns
+        // Fall back to a sane value if nothing fit (should be rare).
+        return max(1, min(itemCount, testColumns))
     }
 
     // MARK: Helpers
@@ -234,15 +281,6 @@ final class SetGameViewController: UIViewController {
         button.configuration = configuration
         button.addTarget(self, action: action, for: .touchUpInside)
         return button
-    }
-
-    // Operate on each currently selected visible cell.
-    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
-        for indexPath in indexPathsForSelectedCards() {
-            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
-                action(cell)
-            }
-        }
     }
 }
 
