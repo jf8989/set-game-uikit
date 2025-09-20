@@ -2,16 +2,6 @@
 
 import UIKit
 
-// MARK: - CATransaction convenience
-extension CATransaction {
-    fileprivate static func withoutActions(_ body: () -> Void) {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        body()
-        CATransaction.commit()
-    }
-}
-
 final class CardButtonCell: UICollectionViewCell {
     static let reuseIdentifier = "CardButtonCell"
 
@@ -66,10 +56,8 @@ final class CardButtonCell: UICollectionViewCell {
         lastIsSelected = isSelected
         lastEvaluation = evaluation
 
-        // Background/color updates without implicit animations
-        CATransaction.withoutActions {
-            contentView.backgroundColor = .systemBackground
-        }
+        // Background/color updates
+        contentView.backgroundColor = .systemBackground
         setSelectionBorder(isSelected: isSelected, evaluation: evaluation)
 
         // Accessibility
@@ -97,10 +85,8 @@ final class CardButtonCell: UICollectionViewCell {
             }
         }()
 
-        CATransaction.withoutActions {
-            contentView.layer.borderWidth = isSelected ? 3 : 2
-            contentView.layer.borderColor = borderUIColor.cgColor
-        }
+        contentView.layer.borderWidth = isSelected ? 3 : 2
+        contentView.layer.borderColor = borderUIColor.cgColor
     }
 
     // Brief visual flash to indicate match/mismatch across the selected trio.

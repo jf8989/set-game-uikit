@@ -4,8 +4,6 @@ import UIKit
 
 enum GridLayoutHelper {
 
-    /// Computes item size that fits `itemCount` inside `containerSize` using the given spacings and aspect ratio.
-    /// When `itemCount` exceeds `freezeAtCount`, sizing is frozen based on that threshold; additional items scroll.
     static func itemSize(
         for containerSize: CGSize,
         itemCount: Int,
