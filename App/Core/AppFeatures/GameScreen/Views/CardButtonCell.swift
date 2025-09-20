@@ -103,7 +103,7 @@ final class CardButtonCell: UICollectionViewCell {
         }
     }
 
-    /// Brief visual flash to indicate match/mismatch across the selected trio.
+    // Brief visual flash to indicate match/mismatch across the selected trio.
     func flashFeedback(color: UIColor) {
         let originalBackground = contentView.backgroundColor
         UIView.animate(

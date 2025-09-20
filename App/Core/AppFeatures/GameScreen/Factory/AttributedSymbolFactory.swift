@@ -51,7 +51,7 @@ enum AttributedSymbolFactory {
                 .font: font,
                 .foregroundColor: UIColor.clear,
                 .strokeColor: uiColor,
-                .strokeWidth: 3,
+                .strokeWidth: 5,
                 .paragraphStyle: paragraph,
             ]
         case .striped:
