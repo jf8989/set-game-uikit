@@ -85,7 +85,7 @@ final class CardButtonCell: UICollectionViewCell {
             }
         }()
 
-        contentView.layer.borderWidth = isSelected ? 3 : 2
+        contentView.layer.borderWidth = isSelected ? 5 : 2
         contentView.layer.borderColor = borderUIColor.cgColor
     }
 

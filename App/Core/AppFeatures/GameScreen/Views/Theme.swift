@@ -14,9 +14,9 @@ enum Theme {
 
     enum CardUI {
         static let cornerRadius: CGFloat = 16
-        static let contentInset: CGFloat = 8
+        static let contentInset: CGFloat = 12
         static let lineSpacing: CGFloat = 6
         static let minSymbolLineHeight: CGFloat = 12
-        static let maxWidthGlyphScale: CGFloat = 0.65
+        static let maxWidthGlyphScale: CGFloat = 0.58
     }
 }
