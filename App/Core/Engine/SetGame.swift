@@ -6,7 +6,6 @@ import Foundation
 struct SetGame {
 
     // MARK: - Properties
-
     var deck: [CardSet] = []
     var tableCards: [CardSet] = []
     var discardPile: [CardSet] = []
@@ -21,13 +20,11 @@ struct SetGame {
     }
 
     // MARK: - Initialization
-
     init() {
         generateDeck()
     }
 
     // MARK: - Game State
-
     mutating func newGame() {
         generateDeck()
     }
@@ -57,7 +54,6 @@ struct SetGame {
     }
 
     // MARK: - Core Selection Logic
-
     mutating func choose(this card: CardSet) {
         switch setEvalStatus {
         case .found:
@@ -85,33 +81,46 @@ struct SetGame {
             }
 
             // Evaluate when exactly 3 are selected.
-            if selectedCards.count == 3 {
+            if selectedCards.count == GameRules.setSize {
                 if selectedCards.isSet {
                     setEvalStatus = .found
-                    score += 3
+                    score += Scoring.matchReward
                 } else {
                     setEvalStatus = .fail
-                    score -= 1
+                    score -= Scoring.mismatchPenalty
                 }
             }
         }
     }
 }
 
-// MARK: - Card Dealing Helpers
+// MARK: - Game Rules + Scording Ext.
+extension SetGame {
+    enum GameRules {
+        static let setSize = 3
+        static let initialDealCount = 12
+        static let subsequentDealCount = 3
+    }
 
+    enum Scoring {
+        static let matchReward = 3
+        static let mismatchPenalty = 1
+    }
+}
+
+// MARK: - Card Dealing Helpers Ext.
 extension SetGame {
     /// Deal the initial 12 cards at the start of the game.
     mutating func dealInitialCards() {
         guard tableCards.isEmpty else { return }
-        let count = min(12, deck.count)
+        let count = min(GameRules.initialDealCount, deck.count)
         tableCards.append(contentsOf: deck.prefix(count))
         deck.removeFirst(count)
     }
 
     /// Standard 3-card deal.
     private mutating func normalDraw() {
-        let cardsToDeal = min(3, deck.count)
+        let cardsToDeal = min(GameRules.subsequentDealCount, deck.count)
         if cardsToDeal > 0 {
             tableCards.append(contentsOf: deck.prefix(cardsToDeal))
             deck.removeFirst(cardsToDeal)

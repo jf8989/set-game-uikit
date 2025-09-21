@@ -3,6 +3,7 @@
 import UIKit
 
 enum SelectionIndexHelper {
+
     static func indexPaths(
         for selectedCards: [CardSet],
         in tableCards: [CardSet]

@@ -4,17 +4,17 @@ import UIKit
 
 final class SetGameViewController: UIViewController {
 
-    // MARK: Model
+    // MARK: - Model
     private var game = SetGame()
 
     // Cache for layout recalculation: include size + capped count to fit
     private var lastLayoutKey: (size: CGSize, fitCount: Int) = (.zero, 0)
 
-    // MARK: Feedback state + service
+    // MARK: - Feedback state + service
     private var lastShownEvaluation: SetEvalStatus = .none
     private let feedbackService = FeedbackService()
 
-    // MARK: UI
+    // MARK: - UI
     private let scoreLabel = UILabel()
     private let cardsLeftLabel = UILabel()
 
@@ -41,7 +41,7 @@ final class SetGameViewController: UIViewController {
     private lazy var dealButton: UIButton =
         ButtonFactory.createBorderedButton(title: "Deal 3", target: self, action: #selector(dealThree))
 
-    // MARK: Lifecycle
+    // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Set"
@@ -56,7 +56,7 @@ final class SetGameViewController: UIViewController {
         updateGridItemSize()
     }
 
-    // MARK: Actions
+    // MARK: - Actions
     @objc private func newGame() {
         game.newGame()
         lastShownEvaluation = .none
@@ -74,7 +74,7 @@ final class SetGameViewController: UIViewController {
         updateUI()  // full refresh (count/content changed)
     }
 
-    // MARK: UI Updates (full refresh)
+    // MARK: - UI Updates (full refresh)
     private func updateUI() {
         scoreLabel.text = "Score: \(game.score)"
         cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
@@ -91,7 +91,7 @@ final class SetGameViewController: UIViewController {
         showEvaluationFeedbackIfNeeded()
     }
 
-    // MARK: Match/Mismatch Feedback
+    // MARK: - Match/Mismatch Feedback
     private func indexPathsForSelectedCards() -> [IndexPath] {
         SelectionIndexHelper.indexPaths(for: game.selectedCards, in: game.tableCards)
     }
@@ -123,7 +123,7 @@ final class SetGameViewController: UIViewController {
         lastShownEvaluation = currentEvaluation
     }
 
-    // MARK: Layout
+    // MARK: - Layout
     private func buildLayout() {
         // Header
         scoreLabel.font = .preferredFont(forTextStyle: .title3)
@@ -192,7 +192,7 @@ final class SetGameViewController: UIViewController {
         collectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     }
 
-    // MARK: Grid sizing (fit until freezeAt, then scroll)
+    // MARK: - Grid sizing (fit until freezeAt, then scroll)
     private func updateGridItemSize() {
         guard let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
 
@@ -201,7 +201,7 @@ final class SetGameViewController: UIViewController {
 
         // Include card count in the cache key so we recompute when count changes
         let actualCount = max(game.tableCards.count, 1)
-        let fitCount = min(actualCount, Theme.Layout.freezeAtCount)
+        let fitCount = min(actualCount, Theme.Layout.stopResizingAfterItemCount)
         let currentKey = (size: contentSize, fitCount: fitCount)
         if currentKey == lastLayoutKey { return }
 
@@ -211,7 +211,7 @@ final class SetGameViewController: UIViewController {
             aspectRatio: Theme.Layout.cardAspectRatio,
             interitemSpacing: flowLayout.minimumInteritemSpacing,
             lineSpacing: flowLayout.minimumLineSpacing,
-            freezeAtCount: Theme.Layout.freezeAtCount
+            freezeAtCount: Theme.Layout.stopResizingAfterItemCount
         )
 
         if flowLayout.itemSize != itemSize {

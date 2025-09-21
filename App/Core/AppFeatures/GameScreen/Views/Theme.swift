@@ -8,7 +8,7 @@ enum Theme {
         static let outerPadding: CGFloat = 12
         static let interitem: CGFloat = 6
         static let lineSpacing: CGFloat = 6
-        static let freezeAtCount: Int = 30
+        static let stopResizingAfterItemCount: Int = 30
         static let cardAspectRatio: CGFloat = 2.0 / 3.0
     }
 

@@ -7,7 +7,7 @@ import Foundation
 /// Evaluates if a card is a set
 extension Array where Element == CardSet {
     var isSet: Bool {
-        guard self.count == 3 else { return false }
+        guard self.count == SetGame.GameRules.setSize else { return false }
         let colors = self.map { $0.color }
         let symbols = self.map { $0.symbol }
         let numbers = self.map { $0.number.rawValue }

@@ -3,6 +3,7 @@
 import UIKit
 
 final class CardButtonCell: UICollectionViewCell {
+
     static let reuseIdentifier = "CardButtonCell"
 
     private let cardButton = UIButton(type: .system)
@@ -50,7 +51,6 @@ final class CardButtonCell: UICollectionViewCell {
     }
 
     // MARK: - Public API
-
     func configure(with card: CardSet, isSelected: Bool, evaluation: SetEvalStatus) {
         lastConfiguredCard = card
         lastIsSelected = isSelected
@@ -63,7 +63,7 @@ final class CardButtonCell: UICollectionViewCell {
         // Accessibility
         isAccessibilityElement = true
         accessibilityTraits = .button
-        accessibilityLabel = AccessibilityLabelFactory.make(for: card)
+        accessibilityLabel = card.accessibilityLabelText
 
         // Avoid UILabel/title cross-fades
         UIView.performWithoutAnimation {

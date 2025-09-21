@@ -3,6 +3,7 @@
 import UIKit
 
 final class FeedbackService {
+    
     private let selectionHaptic = UISelectionFeedbackGenerator()
     private let notificationHaptic = UINotificationFeedbackGenerator()
 
