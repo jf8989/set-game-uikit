@@ -106,7 +106,7 @@ final class SetGameViewController: UIViewController {
     }
 
     private func showEvaluationFeedbackIfNeeded() {
-        guard game.selectedCards.count == 3 else {
+        guard game.selectedCards.count == SetGame.GameRules.setSize else {
             lastShownEvaluation = .none
             return
         }
