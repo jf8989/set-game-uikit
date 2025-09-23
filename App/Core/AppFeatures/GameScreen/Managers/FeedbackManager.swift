@@ -1,8 +1,8 @@
-// App/Core/AppFeatures/GameScreen/Services/FeedbackService.swift
+// App/Core/AppFeatures/GameScreen/Managers/FeedbackManager.swift
 
 import UIKit
 
-final class FeedbackService {
+final class FeedbackManager {
     
     private let selectionHaptic = UISelectionFeedbackGenerator()
     private let notificationHaptic = UINotificationFeedbackGenerator()
