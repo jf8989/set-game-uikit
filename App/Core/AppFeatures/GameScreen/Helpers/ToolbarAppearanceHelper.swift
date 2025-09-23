@@ -10,38 +10,39 @@ enum ToolbarStyle {
 func applyToolbarAppearance(_ toolbar: UIToolbar, style: ToolbarStyle) {
     toolbar.translatesAutoresizingMaskIntoConstraints = false
 
+    // Legacy path first
+    guard #available(iOS 13.0, *) else {
+        // Best-effort on old iOS: remove hairline; choose translucency
+        switch style {
+        case .solid(let background):
+            toolbar.isTranslucent = false
+            toolbar.barTintColor = background
+        case .translucent:
+            toolbar.isTranslucent = true
+        }
+        toolbar.setBackgroundImage(UIImage(), forToolbarPosition: .any, barMetrics: .default)
+        toolbar.setShadowImage(UIImage(), forToolbarPosition: .any)
+        return
+    }
+
+    // Modern path
+    let appearance = UIToolbarAppearance()
+    appearance.shadowColor = .clear
+
     switch style {
     case .solid(let background):
         toolbar.isTranslucent = false
-        if #available(iOS 13.0, *) {
-            let appearance = UIToolbarAppearance()
-            appearance.configureWithOpaqueBackground()
-            appearance.backgroundColor = background
-            appearance.shadowColor = .clear
-            toolbar.standardAppearance = appearance
-            toolbar.compactAppearance = appearance
-            toolbar.scrollEdgeAppearance = appearance
-            toolbar.compactScrollEdgeAppearance = appearance
-        } else {
-            toolbar.setBackgroundImage(UIImage(), forToolbarPosition: .any, barMetrics: .default)
-            toolbar.setShadowImage(UIImage(), forToolbarPosition: .any)
-        }
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = background
 
     case .translucent(let blurStyle):
         toolbar.isTranslucent = true
-        if #available(iOS 13.0, *) {
-            let appearance = UIToolbarAppearance()
-            appearance.configureWithTransparentBackground()  // no solid fill
-            appearance.backgroundEffect = UIBlurEffect(style: blurStyle)  // the blur
-            appearance.shadowColor = .clear  // kill hairline
-            toolbar.standardAppearance = appearance
-            toolbar.compactAppearance = appearance
-            toolbar.scrollEdgeAppearance = appearance
-            toolbar.compactScrollEdgeAppearance = appearance
-        } else {
-            // Older iOS: best-effort “transparent” look (no blur API).
-            toolbar.setBackgroundImage(UIImage(), forToolbarPosition: .any, barMetrics: .default)
-            toolbar.setShadowImage(UIImage(), forToolbarPosition: .any)
-        }
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundEffect = UIBlurEffect(style: blurStyle)
     }
+
+    toolbar.standardAppearance = appearance
+    toolbar.compactAppearance = appearance
+    toolbar.scrollEdgeAppearance = appearance
+    toolbar.compactScrollEdgeAppearance = appearance
 }
