@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Views/SetGridAdapter.swift
+// App/Core/AppFeatures/GameScreen/Views/Utility/SetGridAdapter.swift
 
 import UIKit
 

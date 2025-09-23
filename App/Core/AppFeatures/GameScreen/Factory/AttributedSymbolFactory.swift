@@ -5,7 +5,7 @@ import UIKit
 enum AttributedSymbolFactory {
 
     static func make(for card: CardSet, in containerSize: CGSize) -> NSAttributedString {
-        let symbolGlyph = glyph(for: card.symbol)
+        let symbolGlyph = card.symbol.glyph
         let linesCount = card.number.rawValue
 
         // Layout constants
@@ -35,7 +35,7 @@ enum AttributedSymbolFactory {
         paragraph.alignment = .center
         paragraph.lineSpacing = lineSpacing
 
-        let uiColor = color(for: card.color)
+        let uiColor = card.color.uiColor
         let attributes: [NSAttributedString.Key: Any]
         switch card.shading {
         case .solid:
@@ -66,21 +66,5 @@ enum AttributedSymbolFactory {
 
         let text = Array(repeating: symbolGlyph, count: linesCount).joined(separator: "\n")
         return NSAttributedString(string: text, attributes: attributes)
-    }
-
-    private static func glyph(for symbol: CardSymbol) -> String {
-        switch symbol {
-        case .diamond: return "▲"
-        case .oval: return "●"
-        case .squiggle: return "■"
-        }
-    }
-
-    private static func color(for color: CardColor) -> UIColor {
-        switch color {
-        case .red: return .systemRed
-        case .green: return .systemGreen
-        case .purple: return .systemPurple
-        }
     }
 }

@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/SetGameLayoutBuilder.swift
+// App/Core/AppFeatures/GameScreen/Views/Utility/SetGameLayoutBuilder.swift
 import UIKit
 
 struct SetGameLayoutBuilder {
@@ -7,33 +7,32 @@ struct SetGameLayoutBuilder {
     let toolbar: GameToolbarView
 
     func install(in root: UIView, safe: UILayoutGuide, padding: CGFloat) {
-        // Add subviews
-        [header, grid, toolbar].forEach { root.addSubview($0) }
-
-        header.translatesAutoresizingMaskIntoConstraints = false
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        // Add grid first so it sits behind the bars.
+        [grid, header, toolbar].forEach {
+            root.addSubview($0)
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
 
         NSLayoutConstraint.activate([
-            // Header at top
+            // Header at top (safe area)
             header.topAnchor.constraint(equalTo: safe.topAnchor, constant: padding),
             header.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
             header.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
 
-            // Toolbar at bottom
+            // Toolbar at bottom (safe area)
             toolbar.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
             toolbar.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
             toolbar.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -padding),
 
-            // Grid fills the middle
-            grid.topAnchor.constraint(equalTo: header.bottomAnchor, constant: padding),
+            // Grid runs edge-to-edge, underneath both bars
+            grid.topAnchor.constraint(equalTo: root.topAnchor),
             grid.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
             grid.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
-            grid.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -padding),
+            grid.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
 
-        // Example of view priorities if you still want them:
-        grid.setContentHuggingPriority(.defaultLow, for: .vertical)
-        grid.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        // Protect against future add-order changes.
+        root.bringSubviewToFront(header)
+        root.bringSubviewToFront(toolbar)
     }
 }

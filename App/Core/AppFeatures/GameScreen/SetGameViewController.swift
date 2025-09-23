@@ -8,205 +8,132 @@ final class SetGameViewController: UIViewController {
     private var game = SetGame()
 
     // Cache for layout recalculation: include size + capped count to fit
-    private var lastLayoutKey: (size: CGSize, fitCount: Int) = (.zero, 0)
+    private var lastLayoutKey: (visibleSize: CGSize, fitCount: Int) = (.zero, 0)
+
+    private var lastAppliedContentInsets: UIEdgeInsets = .zero
 
     // MARK: - Feedback state + service
     private var lastShownEvaluation: SetEvalStatus = .none
-    private let feedbackService = FeedbackService()
+    private let feedbackManager = FeedbackManager()
 
-    // MARK: - UI
-    private let scoreLabel = UILabel()
-    private let cardsLeftLabel = UILabel()
+    // MARK: - Views
+    private let headerView = HeaderView()
+    private let toolbarView = GameToolbarView()
 
-    private lazy var collectionView: UICollectionView = {
+    private lazy var gridCollectionView: UICollectionView = {
         let flowLayout = UICollectionViewFlowLayout()
-        flowLayout.sectionInset = .zero
         flowLayout.minimumInteritemSpacing = Theme.Layout.interitem
         flowLayout.minimumLineSpacing = Theme.Layout.lineSpacing
+        flowLayout.sectionInset = UIEdgeInsets(
+            top: Theme.Layout.lineSpacing,
+            left: 0,
+            bottom: Theme.Layout.lineSpacing,
+            right: 0
+        )
+        flowLayout.sectionInsetReference = .fromContentInset
 
         let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .systemBackground
         collectionView.register(CardButtonCell.self, forCellWithReuseIdentifier: CardButtonCell.reuseIdentifier)
-        collectionView.dataSource = self
-        collectionView.delegate = self
         collectionView.allowsMultipleSelection = true
         collectionView.translatesAutoresizingMaskIntoConstraints = false
+        collectionView.alwaysBounceVertical = true
+        collectionView.contentInsetAdjustmentBehavior = .never
         return collectionView
     }()
 
-    private lazy var newGameButton: UIButton =
-        ButtonFactory.createBorderedButton(title: "New Game", target: self, action: #selector(newGame))
-    private lazy var shuffleButton: UIButton =
-        ButtonFactory.createBorderedButton(title: "Shuffle", target: self, action: #selector(shuffleCards))
-    private lazy var dealButton: UIButton =
-        ButtonFactory.createBorderedButton(title: "Deal 3", target: self, action: #selector(dealThree))
+    // Grid adapter
+    private let gridAdapter = SetGridAdapter()
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Set"
+        title = "Set Game"
+        navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemBackground
+
+        setupGridAdapter()
         buildLayout()
         newGame()
-        updateUI()  // full refresh
+        updateUI()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        updateChromeInsetsIfNeeded()
         updateGridItemSize()
     }
 
-    // MARK: - Actions
-    @objc private func newGame() {
-        game.newGame()
-        lastShownEvaluation = .none
-        updateUI()  // full refresh
-    }
-
-    @objc private func shuffleCards() {
-        game.shuffleTableCards()
-        feedbackService.selectionChanged()
-        updateUI()  // full refresh (content positions changed)
-    }
-
-    @objc private func dealThree() {
-        game.dealCards()  // replace if matched, else add 3
-        updateUI()  // full refresh (count/content changed)
-    }
-
-    // MARK: - UI Updates (full refresh)
-    private func updateUI() {
-        scoreLabel.text = "Score: \(game.score)"
-        cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
-        dealButton.isEnabled = game.canDealMore
-
-        view.layoutIfNeeded()
-        updateGridItemSize()
-
-        UIView.performWithoutAnimation {
-            collectionView.reloadData()
-            collectionView.layoutIfNeeded()
-        }
-
-        showEvaluationFeedbackIfNeeded()
-    }
-
-    // MARK: - Match/Mismatch Feedback
-    private func indexPathsForSelectedCards() -> [IndexPath] {
-        SelectionIndexHelper.indexPaths(for: game.selectedCards, in: game.tableCards)
-    }
-
-    // Closure helper (req #12): operate on each selected visible cell
-    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
-        for indexPath in indexPathsForSelectedCards() {
-            if let cell = collectionView.cellForItem(at: indexPath) as? CardButtonCell {
-                action(cell)
-            }
-        }
-    }
-
-    private func showEvaluationFeedbackIfNeeded() {
-        guard game.selectedCards.count == SetGame.GameRules.setSize else {
-            lastShownEvaluation = .none
-            return
-        }
-        let currentEvaluation = game.setEvalStatus
-        guard currentEvaluation != .none, currentEvaluation != lastShownEvaluation else { return }
-
-        feedbackService.notify(evaluation: currentEvaluation)
-
-        let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
-        forEachSelectedCell { cell in
-            cell.flashFeedback(color: flashUIColor)
-        }
-
-        lastShownEvaluation = currentEvaluation
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        updateChromeInsetsIfNeeded()
     }
 
     // MARK: - Layout
     private func buildLayout() {
-        // Header
-        scoreLabel.font = .preferredFont(forTextStyle: .title3)
-        cardsLeftLabel.font = .preferredFont(forTextStyle: .title3)
+        let recipe = SetGameLayoutBuilder(
+            header: headerView,
+            grid: gridCollectionView,
+            toolbar: toolbarView
+        )
+        recipe.install(
+            in: view,
+            safe: view.safeAreaLayoutGuide,
+            padding: Theme.Layout.outerPadding
+        )
+    }
 
-        let spacerView = UIView()
-        let headerRow = UIStackView(arrangedSubviews: [scoreLabel, spacerView, cardsLeftLabel])
-        headerRow.axis = .horizontal
-        headerRow.alignment = .center
-        headerRow.translatesAutoresizingMaskIntoConstraints = false
+    // MARK: - Grid Adapter setup / sync
+    private func setupGridAdapter() {
+        // Wire adapter
+        gridCollectionView.dataSource = gridAdapter
+        gridCollectionView.delegate = gridAdapter
+        gridAdapter.onToggleCard = { [weak self] card in
+            guard let self else { return }
+            let previouslySelected = self.indexPathsForSelectedCards()
+            self.game.choose(this: card)
+            self.syncAdapterFromGame()
+            self.updateSelectionUI(previouslySelected: previouslySelected)
+        }
 
-        // Toolbar (New • Shuffle • Deal 3)
-        let toolbar = UIStackView(arrangedSubviews: [newGameButton, shuffleButton, dealButton])
-        toolbar.axis = .horizontal
-        toolbar.spacing = 12
-        toolbar.distribution = .fillEqually
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
+        // Wire buttons
+        toolbarView.newGameButton.addTarget(self, action: #selector(newGame), for: .touchUpInside)
+        toolbarView.shuffleButton.addTarget(self, action: #selector(shuffleCards), for: .touchUpInside)
+        toolbarView.dealButton.addTarget(self, action: #selector(dealThree), for: .touchUpInside)
+    }
 
-        view.addSubview(headerRow)
-        view.addSubview(collectionView)
-        view.addSubview(toolbar)
-
-        NSLayoutConstraint.activate([
-            // Header at top
-            headerRow.topAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.topAnchor,
-                constant: Theme.Layout.outerPadding
-            ),
-            headerRow.leadingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
-                constant: Theme.Layout.outerPadding
-            ),
-            headerRow.trailingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
-                constant: -Theme.Layout.outerPadding
-            ),
-
-            // Toolbar at bottom
-            toolbar.leadingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
-                constant: Theme.Layout.outerPadding
-            ),
-            toolbar.trailingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
-                constant: -Theme.Layout.outerPadding
-            ),
-            toolbar.bottomAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.bottomAnchor,
-                constant: -Theme.Layout.outerPadding
-            ),
-
-            // Collection view fills the middle
-            collectionView.topAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: Theme.Layout.outerPadding),
-            collectionView.leadingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.leadingAnchor,
-                constant: Theme.Layout.outerPadding
-            ),
-            collectionView.trailingAnchor.constraint(
-                equalTo: view.safeAreaLayoutGuide.trailingAnchor,
-                constant: -Theme.Layout.outerPadding
-            ),
-            collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -Theme.Layout.outerPadding),
-        ])
-
-        collectionView.setContentHuggingPriority(.defaultLow, for: .vertical)
-        collectionView.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+    private func syncAdapterFromGame() {
+        gridAdapter.cards = game.tableCards
+        gridAdapter.selectedIds = Set(game.selectedCards.map(\.id))
+        gridAdapter.evaluation = game.setEvalStatus
+        toolbarView.dealButton.isEnabled = game.canDealMore
+        headerView.scoreLabel.text = "Score: \(game.score)"
+        headerView.cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
     }
 
     // MARK: - Grid sizing (fit until freezeAt, then scroll)
     private func updateGridItemSize() {
-        guard let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
+        guard let flowLayout = gridCollectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
 
-        let contentSize = collectionView.bounds.size
-        guard contentSize.width > 0, contentSize.height > 0 else { return }
+        // Visible area = collection bounds minus adjusted insets (respects our run-under bars).
+        let adjusted = gridCollectionView.adjustedContentInset
+        let visibleWidth = gridCollectionView.bounds.width - adjusted.left - adjusted.right
+        let visibleHeight = gridCollectionView.bounds.height - adjusted.top - adjusted.bottom
+        guard visibleWidth > 0, visibleHeight > 0 else { return }
 
-        // Include card count in the cache key so we recompute when count changes
+        // Smaller, “visible” size for sizing.
+        let visibleSize = CGSize(width: visibleWidth, height: visibleHeight)
+
+        // Fit until freezeAt, then allow scrolling.
         let actualCount = max(game.tableCards.count, 1)
         let fitCount = min(actualCount, Theme.Layout.stopResizingAfterItemCount)
-        let currentKey = (size: contentSize, fitCount: fitCount)
+
+        // Recompute only when either visible size or fitCount changes.
+        let currentKey = (visibleSize: visibleSize, fitCount: fitCount)
         if currentKey == lastLayoutKey { return }
 
         let itemSize = GridLayoutHelper.itemSize(
-            for: contentSize,
+            for: visibleSize,
             itemCount: actualCount,
             aspectRatio: Theme.Layout.cardAspectRatio,
             interitemSpacing: flowLayout.minimumInteritemSpacing,
@@ -220,45 +147,107 @@ final class SetGameViewController: UIViewController {
         }
         lastLayoutKey = currentKey
     }
-}
 
-// MARK: - DataSource + Delegate
-extension SetGameViewController: UICollectionViewDataSource, UICollectionViewDelegate {
-    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        game.tableCards.count
+    // MARK: - Actions
+    @objc private func newGame() {
+        game.newGame()
+        lastShownEvaluation = .none
+        syncAdapterFromGame()
+        updateUI()
     }
 
-    func collectionView(
-        _ collectionView: UICollectionView,
-        cellForItemAt indexPath: IndexPath
-    ) -> UICollectionViewCell {
-        let card = game.tableCards[indexPath.item]
-        let cell =
-            collectionView.dequeueReusableCell(
-                withReuseIdentifier: CardButtonCell.reuseIdentifier,
-                for: indexPath
-            ) as! CardButtonCell
-
-        let isCurrentlySelected = game.selectedCards.contains(card)
-        let evaluationStatus = game.setEvalStatus
-
-        cell.configure(with: card, isSelected: isCurrentlySelected, evaluation: evaluationStatus)
-        return cell
+    @objc private func shuffleCards() {
+        game.shuffleTableCards()
+        feedbackManager.selectionChanged()
+        syncAdapterFromGame()
+        updateUI()
     }
 
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let tappedCard = game.tableCards[indexPath.item]
-        game.choose(this: tappedCard)
-        updateUI()  // full refresh to keep replacement atomic
+    @objc private func dealThree() {
+        game.dealCards()
+        syncAdapterFromGame()
+        updateUI()
     }
 
-    func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
-        let tappedCard = game.tableCards[indexPath.item]
-        game.choose(this: tappedCard)
-        updateUI()  // full refresh for consistency
+    // MARK: - Match / Mismatch Feedback
+    private func indexPathsForSelectedCards() -> [IndexPath] {
+        SelectionIndexHelper.indexPaths(for: game.selectedCards, in: game.tableCards)
     }
-}
 
-#Preview {
-    SetGameViewController()
+    // Closure helper (req #12): operate on each selected visible cell
+    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
+        for indexPath in indexPathsForSelectedCards() {
+            if let cell = gridCollectionView.cellForItem(at: indexPath) as? CardButtonCell {
+                action(cell)
+            }
+        }
+    }
+
+    private func showEvaluationFeedbackIfNeeded() {
+        guard game.selectedCards.count == SetGame.GameRules.setSize else {
+            lastShownEvaluation = .none
+            return
+        }
+        let currentEvaluation = game.setEvalStatus
+        guard currentEvaluation != .none, currentEvaluation != lastShownEvaluation else { return }
+
+        feedbackManager.notify(evaluation: currentEvaluation)
+
+        let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
+        forEachSelectedCell { cell in
+            cell.flashFeedback(color: flashUIColor)
+        }
+
+        lastShownEvaluation = currentEvaluation
+    }
+
+    // MARK: - UI Updates
+    private func updateUI() {  // full refresh
+        view.layoutIfNeeded()
+        updateGridItemSize()
+
+        UIView.performWithoutAnimation {
+            gridCollectionView.reloadData()
+            gridCollectionView.layoutIfNeeded()
+        }
+
+        showEvaluationFeedbackIfNeeded()
+    }
+
+    // Update selection only
+    private func updateSelectionUI(previouslySelected: [IndexPath]) {
+        let nowSelected = indexPathsForSelectedCards()
+        let changed = Array(Set(previouslySelected + nowSelected))
+
+        guard !changed.isEmpty else { return }
+
+        UIView.performWithoutAnimation {
+            gridCollectionView.reloadItems(at: changed)
+        }
+
+        showEvaluationFeedbackIfNeeded()
+    }
+
+    private func updateChromeInsetsIfNeeded() {
+        // Top: header bottom + a little breathing room
+        let topInset = headerView.frame.maxY + Theme.Layout.outerPadding
+
+        // Bottom: distance from toolbar top to bottom + breathing room
+        let bottomDistance = view.bounds.height - toolbarView.frame.minY
+        let bottomInset = bottomDistance + Theme.Layout.outerPadding
+
+        let newInsets = UIEdgeInsets(top: topInset, left: 0, bottom: bottomInset, right: 0)
+        guard newInsets != lastAppliedContentInsets else { return }
+
+        // Only snap to the top if the user is already pinned there (avoid jumps while scrolling)
+        let wasPinnedToTop = abs(gridCollectionView.contentOffset.y + lastAppliedContentInsets.top) < 1.0
+
+        gridCollectionView.contentInset = newInsets
+        gridCollectionView.verticalScrollIndicatorInsets = newInsets
+        lastAppliedContentInsets = newInsets
+
+        if wasPinnedToTop {
+            gridCollectionView.setContentOffset(CGPoint(x: 0, y: -newInsets.top), animated: false)
+        }
+    }
 }

@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Views/CardButtonCell.swift
+// App/Core/AppFeatures/GameScreen/Views/Components/CardButtonCell.swift
 
 import UIKit
 

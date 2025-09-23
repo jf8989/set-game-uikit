@@ -1,4 +1,4 @@
-// App/Core/Extensions/ModelTypes+Extensions.swift
+// App/Core/Extensions/CardModel+UIExtensions.swift
 
 import Foundation
 import UIKit // This is why these are separated from the "pure model".
