@@ -1,4 +1,5 @@
 // App/Core/AppFeatures/GameScreen/Views/Components/GameToolbarView.swift
+
 import UIKit
 
 final class GameToolbarView: UIToolbar {

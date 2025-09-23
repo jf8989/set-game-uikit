@@ -1,4 +1,5 @@
 // App/Core/AppFeatures/GameScreen/Views/Components/HeaderView.swift
+
 import UIKit
 
 final class HeaderView: UIToolbar {
