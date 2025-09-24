@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		74A5E8502E7C45C200789A76 /* Exceptions for "UIKitSetGame" folder in "UIKitSetGame" target */ = {
+		74A5E9B02E7C9EBA00789A76 /* Exceptions for "App" folder in "UIKitSetGame" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -21,12 +21,12 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		74A5E8402E7C45C100789A76 /* UIKitSetGame */ = {
+		74A5E8402E7C45C100789A76 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				74A5E8502E7C45C200789A76 /* Exceptions for "UIKitSetGame" folder in "UIKitSetGame" target */,
+				74A5E9B02E7C9EBA00789A76 /* Exceptions for "App" folder in "UIKitSetGame" target */,
 			);
-			path = UIKitSetGame;
+			path = App;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +45,7 @@
 		74A5E8352E7C45C100789A76 = {
 			isa = PBXGroup;
 			children = (
-				74A5E8402E7C45C100789A76 /* UIKitSetGame */,
+				74A5E8402E7C45C100789A76 /* App */,
 				74A5E83F2E7C45C100789A76 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,7 +74,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				74A5E8402E7C45C100789A76 /* UIKitSetGame */,
+				74A5E8402E7C45C100789A76 /* App */,
 			);
 			name = UIKitSetGame;
 			packageProductDependencies = (
@@ -147,7 +147,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L8264UZJKL;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = UIKitSetGame/Info.plist;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -174,7 +174,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = L8264UZJKL;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = UIKitSetGame/Info.plist;
+				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
