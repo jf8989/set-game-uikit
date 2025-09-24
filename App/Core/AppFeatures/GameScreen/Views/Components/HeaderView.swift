@@ -10,7 +10,8 @@ final class HeaderView: UIToolbar {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        style = .translucent(blur: .systemMaterial)
+        applying(.translucent(blur: .systemMaterial))
+
         translatesAutoresizingMaskIntoConstraints = false
         isTranslucent = false
 

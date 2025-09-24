@@ -10,7 +10,8 @@ final class BottomToolbarView: UIToolbar {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        style = .translucent(blur: .systemMaterial)
+        applying(.translucent(blur: .systemMaterial))
+
         isTranslucent = false
         translatesAutoresizingMaskIntoConstraints = false
 
