@@ -5,7 +5,7 @@ import UIKit
 struct SetGameLayoutBuilder {
     let header: HeaderView
     let grid: UICollectionView
-    let toolbar: GameToolbarView
+    let toolbar: BottomToolbarView
 
     func install(in root: UIView, safe: UILayoutGuide, padding: CGFloat) {
         // Add grid first so it sits behind the bars.

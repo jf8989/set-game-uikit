@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Views/Components/GameToolbarView.swift
+// App/Core/AppFeatures/GameScreen/Views/Components/BottomToolbarView.swift
 
 import UIKit
 

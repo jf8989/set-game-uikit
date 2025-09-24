@@ -18,7 +18,7 @@ final class SetGameViewController: UIViewController {
 
     // MARK: - Views
     private let headerView = HeaderView()
-    private let toolbarView = GameToolbarView()
+    private let toolbarView = BottomToolbarView()
 
     private lazy var gridCollectionView: UICollectionView = {
         let flowLayout = UICollectionViewFlowLayout()
