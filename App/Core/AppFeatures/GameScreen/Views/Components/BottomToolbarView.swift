@@ -2,7 +2,7 @@
 
 import UIKit
 
-final class GameToolbarView: UIToolbar {
+final class BottomToolbarView: UIToolbar {
     let newGameButton = BorderedButton(title: "New Game")
     let shuffleButton = BorderedButton(title: "Shuffle")
     let dealButton = BorderedButton(title: "Deal 3")
@@ -10,8 +10,7 @@ final class GameToolbarView: UIToolbar {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        applyToolbarAppearance(self, style: .translucent(blur: .systemMaterial))
-        
+        style = .translucent(blur: .systemMaterial)
         isTranslucent = false
         translatesAutoresizingMaskIntoConstraints = false
 
