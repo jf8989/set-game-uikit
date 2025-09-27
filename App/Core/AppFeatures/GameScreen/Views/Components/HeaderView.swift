@@ -10,29 +10,35 @@ final class HeaderView: UIToolbar {
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        applying(.translucent(blur: .systemMaterial))
+        applying(SetGameTheme.HeaderUI.toolbarStyle)
 
         translatesAutoresizingMaskIntoConstraints = false
         isTranslucent = false
 
-        // Configure labels
-        scoreLabel.font = .preferredFont(forTextStyle: .title3)
-        scoreLabel.adjustsFontForContentSizeCategory = true
-        scoreLabel.numberOfLines = 1
-        scoreLabel.textAlignment = .left
-        scoreLabel.setContentHuggingPriority(.required, for: .horizontal)
-        scoreLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        scoreLabel.adjustsFontSizeToFitWidth = true
-        scoreLabel.minimumScaleFactor = 0.85
+        // Configure labels (shared tokens)
+        let textStyle = SetGameTheme.HeaderUI.labelTextStyle
+        let minScale = SetGameTheme.HeaderUI.labelMinScaleFactor
+        let hugging = SetGameTheme.HeaderUI.labelHuggingPriority
+        let compress = SetGameTheme.HeaderUI.labelCompressionPriority
+        let lines = SetGameTheme.HeaderUI.labelNumberOfLines
 
-        cardsLeftLabel.font = .preferredFont(forTextStyle: .title3)
+        scoreLabel.font = .preferredFont(forTextStyle: textStyle)
+        scoreLabel.adjustsFontForContentSizeCategory = true
+        scoreLabel.numberOfLines = lines
+        scoreLabel.textAlignment = .left
+        scoreLabel.setContentHuggingPriority(hugging, for: .horizontal)
+        scoreLabel.setContentCompressionResistancePriority(compress, for: .horizontal)
+        scoreLabel.adjustsFontSizeToFitWidth = true
+        scoreLabel.minimumScaleFactor = minScale
+
+        cardsLeftLabel.font = .preferredFont(forTextStyle: textStyle)
         cardsLeftLabel.adjustsFontForContentSizeCategory = true
-        cardsLeftLabel.numberOfLines = 1
+        cardsLeftLabel.numberOfLines = lines
         cardsLeftLabel.textAlignment = .right
-        cardsLeftLabel.setContentHuggingPriority(.required, for: .horizontal)
-        cardsLeftLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        cardsLeftLabel.setContentHuggingPriority(hugging, for: .horizontal)
+        cardsLeftLabel.setContentCompressionResistancePriority(compress, for: .horizontal)
         cardsLeftLabel.adjustsFontSizeToFitWidth = true
-        cardsLeftLabel.minimumScaleFactor = 0.85
+        cardsLeftLabel.minimumScaleFactor = minScale
 
         // Items
         let left = UIBarButtonItem(customView: scoreLabel)

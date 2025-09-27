@@ -2,7 +2,7 @@
 
 import UIKit
 
-enum Theme {
+enum SetGameTheme {
 
     enum Layout {
         static let outerPadding: CGFloat = 12

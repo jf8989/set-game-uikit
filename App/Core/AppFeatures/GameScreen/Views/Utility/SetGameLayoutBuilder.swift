@@ -1,15 +1,15 @@
 // App/Core/AppFeatures/GameScreen/Views/Utility/SetGameLayoutBuilder.swift
+// Role: Replace grid with board; header/top, toolbar/bottom, board in between
 
 import UIKit
 
 struct SetGameLayoutBuilder {
     let header: HeaderView
-    let grid: UICollectionView
+    let board: CardBoardView
     let toolbar: BottomToolbarView
 
     func install(in root: UIView, safe: UILayoutGuide, padding: CGFloat) {
-        // Add grid first so it sits behind the bars.
-        [grid, header, toolbar].forEach {
+        [header, board, toolbar].forEach {
             root.addSubview($0)
             $0.translatesAutoresizingMaskIntoConstraints = false
         }
@@ -20,20 +20,16 @@ struct SetGameLayoutBuilder {
             header.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
             header.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
 
+            // Board between header and toolbar
+            board.topAnchor.constraint(equalTo: header.bottomAnchor, constant: padding),
+            board.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
+            board.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
+            board.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -padding),
+
             // Toolbar at bottom (safe area)
             toolbar.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
             toolbar.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
             toolbar.bottomAnchor.constraint(equalTo: safe.bottomAnchor, constant: -padding),
-
-            // Grid runs edge-to-edge, underneath both bars
-            grid.topAnchor.constraint(equalTo: root.topAnchor),
-            grid.leadingAnchor.constraint(equalTo: safe.leadingAnchor, constant: padding),
-            grid.trailingAnchor.constraint(equalTo: safe.trailingAnchor, constant: -padding),
-            grid.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
-
-        // Protect against future add-order changes.
-        root.bringSubviewToFront(header)
-        root.bringSubviewToFront(toolbar)
     }
 }

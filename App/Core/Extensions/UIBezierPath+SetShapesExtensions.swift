@@ -5,8 +5,6 @@ import UIKit
 
 extension UIBezierPath {
 
-    // MARK: - Diamond & Oval
-
     static func setDiamond(in rect: CGRect) -> UIBezierPath {
         let path = UIBezierPath()
         path.move(to: CGPoint(x: rect.midX, y: rect.minY))
@@ -21,61 +19,74 @@ extension UIBezierPath {
         UIBezierPath(roundedRect: rect, cornerRadius: min(rect.width, rect.height) / 2.0)
     }
 
-    // MARK: - Squiggle (symmetrical, with optional rotation)
+    /// Builds an S-shaped squiggle proportional to `rect`. Rotation is applied around rect center,
+    /// then the path is translated so its bounds are perfectly centered on `rect`.
+    static func setSquiggle(
+        in rect: CGRect,
+        rotationDegrees: CGFloat = SetGameTheme.CardUI.squiggleRotationDegrees
+    ) -> UIBezierPath {
+        let insetX = rect.width * SetGameTheme.CardUI.SquiggleRatios.insetXFraction
+        let insetY = rect.height * SetGameTheme.CardUI.SquiggleRatios.insetYFraction
+        let squiggleBox = rect.insetBy(dx: insetX, dy: insetY)
 
-    /// Builds a pleasant S-shaped squiggle proportional to `rect`.
-    /// The path is gently rotated around the rect center by `rotationDegrees`.
-    static func setSquiggle(in rect: CGRect, rotationDegrees: CGFloat = Theme.CardUI.squiggleRotationDegrees)
-        -> UIBezierPath
-    {
-        // Leave margin so rotation stays inside the rect.
-        let insetX = rect.width * 0.06
-        let insetY = rect.height * 0.12
-        let box = rect.insetBy(dx: insetX, dy: insetY)
+        let boxMinX = squiggleBox.minX
+        let boxMinY = squiggleBox.minY
+        let boxWidth = squiggleBox.width
+        let boxHeight = squiggleBox.height
 
-        let w = box.width
-        let h = box.height
-        let x0 = box.minX
-        let y0 = box.minY
-
-        // Symmetric control points tuned to look balanced.
-        let cA = CGPoint(x: x0 + w * 0.18, y: y0 + h * 0.05)
-        let cB = CGPoint(x: x0 + w * 0.42, y: y0 + h * 0.05)
-        let cC = CGPoint(x: x0 + w * 0.70, y: y0 + h * 0.30)
-        let cD = CGPoint(x: x0 + w * 0.90, y: y0 + h * 0.55)
+        func pointForRatio(_ ratio: CGPoint) -> CGPoint {
+            CGPoint(x: boxMinX + boxWidth * ratio.x, y: boxMinY + boxHeight * ratio.y)
+        }
 
         let path = UIBezierPath()
-        // Left mid → right up
-        path.move(to: CGPoint(x: x0 + w * 0.06, y: y0 + h * 0.50))
-        path.addCurve(to: CGPoint(x: x0 + w * 0.52, y: y0 + h * 0.18), controlPoint1: cA, controlPoint2: cB)
-        // Right up → right mid
-        path.addCurve(to: CGPoint(x: x0 + w * 0.96, y: y0 + h * 0.50), controlPoint1: cC, controlPoint2: cD)
-        // Right mid → left down (mirror)
+        path.move(to: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.startLeftMid))
         path.addCurve(
-            to: CGPoint(x: x0 + w * 0.48, y: y0 + h * 0.82),
-            controlPoint1: CGPoint(x: x0 + w * 0.90, y: y0 + h * 0.70),
-            controlPoint2: CGPoint(x: x0 + w * 0.70, y: y0 + h * 0.92)
+            to: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.topAnchor),
+            controlPoint1: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlPointA),
+            controlPoint2: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlPointB)
         )
-        // Left down → close at left mid
         path.addCurve(
-            to: CGPoint(x: x0 + w * 0.06, y: y0 + h * 0.50),
-            controlPoint1: CGPoint(x: x0 + w * 0.30, y: y0 + h * 0.78),
-            controlPoint2: CGPoint(x: x0 + w * 0.18, y: y0 + h * 0.95)
+            to: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.rightMid),
+            controlPoint1: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlPointC),
+            controlPoint2: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlPointD)
+        )
+        path.addCurve(
+            to: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.bottomAnchor),
+            controlPoint1: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlMirror1),
+            controlPoint2: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlMirror2)
+        )
+        path.addCurve(
+            to: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.startLeftMid),
+            controlPoint1: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlMirror3),
+            controlPoint2: pointForRatio(SetGameTheme.CardUI.SquiggleRatios.controlMirror4)
         )
         path.close()
 
-        // Center the path (defensive) then rotate slightly
+        // Translate the path so its bounds center matches `rect`'s center.
+        func recenter(_ path: UIBezierPath, to rect: CGRect) {
+            let rectCenter = CGPoint(x: rect.midX, y: rect.midY)
+            let translationX = rectCenter.x - path.bounds.midX
+            let translationY = rectCenter.y - path.bounds.midY
+            guard abs(translationX) > .ulpOfOne || abs(translationY) > .ulpOfOne else { return }
+            path.apply(CGAffineTransform(translationX: translationX, y: translationY))
+        }
+
+        // Rotate around center (if requested), then recenter once.
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let toOrigin = CGAffineTransform(translationX: -center.x, y: -center.y)
         let fromOrigin = CGAffineTransform(translationX: center.x, y: center.y)
 
-        if rotationDegrees != 0 {
-            let radians = rotationDegrees * .pi / 180.0
-            path.apply(toOrigin)
-            path.apply(CGAffineTransform(rotationAngle: radians))
-            path.apply(fromOrigin)
+        guard rotationDegrees != 0 else {
+            recenter(path, to: rect)
+            return path
         }
 
+        let radians = rotationDegrees * .pi / 180.0
+        path.apply(toOrigin)
+        path.apply(CGAffineTransform(rotationAngle: radians))
+        path.apply(fromOrigin)
+
+        recenter(path, to: rect)
         return path
     }
 
@@ -109,5 +120,4 @@ extension UIBezierPath {
 
         context.restoreGState()
     }
-
 }
