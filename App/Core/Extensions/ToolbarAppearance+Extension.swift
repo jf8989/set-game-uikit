@@ -1,4 +1,4 @@
-// App/Core/AppFeatures/GameScreen/Helpers/ToolbarAppearance.swift
+// App/Core/Extensions/ToolbarAppearance+Extension.swift
 import UIKit
 
 enum ToolbarStyle {

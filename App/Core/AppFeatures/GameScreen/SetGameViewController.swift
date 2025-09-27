@@ -7,43 +7,17 @@ final class SetGameViewController: UIViewController {
     // MARK: - Model
     private var game = SetGame()
 
-    // Cache for layout recalculation: include size + capped count to fit
-    private var lastLayoutKey: (visibleSize: CGSize, fitCount: Int) = (.zero, 0)
-
-    private var lastAppliedContentInsets: UIEdgeInsets = .zero
-
-    // MARK: - Feedback state + service
-    private var lastShownEvaluation: SetEvalStatus = .none
+    // MARK: - Feedback
     private let feedbackManager = FeedbackManager()
+    private var lastShownEvaluation: SetEvalStatus = .none
 
     // MARK: - Views
     private let headerView = HeaderView()
     private let toolbarView = BottomToolbarView()
+    private let cardBoardView = CardBoardView()
 
-    private lazy var gridCollectionView: UICollectionView = {
-        let flowLayout = UICollectionViewFlowLayout()
-        flowLayout.minimumInteritemSpacing = Theme.Layout.interitem
-        flowLayout.minimumLineSpacing = Theme.Layout.lineSpacing
-        flowLayout.sectionInset = UIEdgeInsets(
-            top: Theme.Layout.lineSpacing,
-            left: 0,
-            bottom: Theme.Layout.lineSpacing,
-            right: 0
-        )
-        flowLayout.sectionInsetReference = .fromContentInset
-
-        let collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.backgroundColor = .systemBackground
-        collectionView.register(CardButtonCell.self, forCellWithReuseIdentifier: CardButtonCell.reuseIdentifier)
-        collectionView.allowsMultipleSelection = true
-        collectionView.translatesAutoresizingMaskIntoConstraints = false
-        collectionView.alwaysBounceVertical = true
-        collectionView.contentInsetAdjustmentBehavior = .never
-        return collectionView
-    }()
-
-    // Grid adapter
-    private let gridAdapter = SetGridAdapter()
+    // Rotation one-shot guard
+    private var didTriggerShuffleThisGesture = false
 
     // MARK: - Lifecycle
     override func viewDidLoad() {
@@ -52,202 +26,173 @@ final class SetGameViewController: UIViewController {
         navigationItem.largeTitleDisplayMode = .never
         view.backgroundColor = .systemBackground
 
-        setupGridAdapter()
         buildLayout()
+        wireButtons()
+        wireGestures()
         newGame()
         updateUI()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        updateChromeInsetsIfNeeded()
-        updateGridItemSize()
+        relayoutBoard()
     }
 
-    override func viewSafeAreaInsetsDidChange() {
-        super.viewSafeAreaInsetsDidChange()
-        updateChromeInsetsIfNeeded()
-    }
-
-    // MARK: - Layout
+    // MARK: - Layout (unchanged)
     private func buildLayout() {
         let recipe = SetGameLayoutBuilder(
             header: headerView,
-            grid: gridCollectionView,
+            board: cardBoardView,
             toolbar: toolbarView
         )
         recipe.install(
             in: view,
             safe: view.safeAreaLayoutGuide,
-            padding: Theme.Layout.outerPadding
+            padding: SetGameTheme.Layout.outerPadding
         )
     }
 
-    // MARK: - Grid Adapter setup / sync
-    private func setupGridAdapter() {
-        // Wire adapter
-        gridCollectionView.dataSource = gridAdapter
-        gridCollectionView.delegate = gridAdapter
-        gridAdapter.onToggleCard = { [weak self] card in
-            guard let self else { return }
-            let previouslySelected = self.indexPathsForSelectedCards()
-            self.game.choose(this: card)
-            self.syncAdapterFromGame()
-            self.updateSelectionUI(previouslySelected: previouslySelected)
-        }
-
-        // Wire buttons
+    // MARK: - Wiring
+    private func wireButtons() {
         toolbarView.newGameButton.addTarget(self, action: #selector(newGame), for: .touchUpInside)
         toolbarView.shuffleButton.addTarget(self, action: #selector(shuffleCards), for: .touchUpInside)
         toolbarView.dealButton.addTarget(self, action: #selector(dealThree), for: .touchUpInside)
     }
 
-    private func syncAdapterFromGame() {
-        gridAdapter.cards = game.tableCards
-        gridAdapter.selectedIds = Set(game.selectedCards.map(\.id))
-        gridAdapter.evaluation = game.setEvalStatus
-        toolbarView.dealButton.isEnabled = game.canDealMore
-        headerView.scoreLabel.text = "Score: \(game.score)"
-        headerView.cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
-    }
+    private func wireGestures() {
+        // Tap to select/deselect
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleBoardTap(_:)))
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        cardBoardView.addGestureRecognizer(tap)
 
-    // MARK: - Grid sizing (fit until freezeAt, then scroll)
-    private func updateGridItemSize() {
-        guard let flowLayout = gridCollectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
+        // Swipe down to deal
+        let swipe = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeDown(_:)))
+        swipe.direction = .down
+        swipe.delegate = self
+        cardBoardView.addGestureRecognizer(swipe)
 
-        // Visible area = collection bounds minus adjusted insets (respects our run-under bars).
-        let adjusted = gridCollectionView.adjustedContentInset
-        let visibleWidth = gridCollectionView.bounds.width - adjusted.left - adjusted.right
-        let visibleHeight = gridCollectionView.bounds.height - adjusted.top - adjusted.bottom
-        guard visibleWidth > 0, visibleHeight > 0 else { return }
-
-        // Smaller, “visible” size for sizing.
-        let visibleSize = CGSize(width: visibleWidth, height: visibleHeight)
-
-        // Fit until freezeAt, then allow scrolling.
-        let actualCount = max(game.tableCards.count, 1)
-        let fitCount = min(actualCount, Theme.Layout.stopResizingAfterItemCount)
-
-        // Recompute only when either visible size or fitCount changes.
-        let currentKey = (visibleSize: visibleSize, fitCount: fitCount)
-        if currentKey == lastLayoutKey { return }
-
-        let itemSize = GridLayoutHelper.itemSize(
-            for: visibleSize,
-            itemCount: actualCount,
-            aspectRatio: Theme.Layout.cardAspectRatio,
-            interitemSpacing: flowLayout.minimumInteritemSpacing,
-            lineSpacing: flowLayout.minimumLineSpacing,
-            freezeAtCount: Theme.Layout.stopResizingAfterItemCount
-        )
-
-        if flowLayout.itemSize != itemSize {
-            flowLayout.itemSize = itemSize
-            flowLayout.invalidateLayout()
-        }
-        lastLayoutKey = currentKey
+        // Two-finger rotation to shuffle
+        let rotate = UIRotationGestureRecognizer(target: self, action: #selector(handleRotate(_:)))
+        rotate.delegate = self
+        cardBoardView.addGestureRecognizer(rotate)
     }
 
     // MARK: - Actions
     @objc private func newGame() {
         game.newGame()
         lastShownEvaluation = .none
-        syncAdapterFromGame()
+        syncFromGame()
         updateUI()
     }
 
     @objc private func shuffleCards() {
         game.shuffleTableCards()
         feedbackManager.selectionChanged()
-        syncAdapterFromGame()
+        syncFromGame()
         updateUI()
     }
 
     @objc private func dealThree() {
         game.dealCards()
-        syncAdapterFromGame()
+        syncFromGame()
         updateUI()
     }
 
+    // MARK: - UI Sync
+    private func syncFromGame() {
+        headerView.scoreLabel.text = "Score: \(game.score)"
+        headerView.cardsLeftLabel.text = "Deck: \(game.cardsLeft)"
+        toolbarView.dealButton.isEnabled = game.canDealMore
+
+        cardBoardView.sync(to: game.tableCards)
+        let selectedIds = Set(game.selectedCards.map(\.id))
+        cardBoardView.applySelection(selectedIds: selectedIds)
+    }
+
+    private func updateUI() {
+        relayoutBoard()
+    }
+
+    private func relayoutBoard() {
+        let frames = cardBoardView.bounds.gridFrames(
+            count: game.tableCards.count,
+            aspectRatio: SetGameTheme.Layout.cardAspectRatio,
+            interitem: SetGameTheme.Layout.interitem,
+            lineSpacing: SetGameTheme.Layout.lineSpacing
+        )
+        cardBoardView.apply(frames: frames)
+    }
+
     // MARK: - Match / Mismatch Feedback
-    private func indexPathsForSelectedCards() -> [IndexPath] {
-        SelectionIndexHelper.indexPaths(for: game.selectedCards, in: game.tableCards)
-    }
-
-    // Closure helper (req #12): operate on each selected visible cell
-    private func forEachSelectedCell(_ action: (CardButtonCell) -> Void) {
-        for indexPath in indexPathsForSelectedCards() {
-            if let cell = gridCollectionView.cellForItem(at: indexPath) as? CardButtonCell {
-                action(cell)
-            }
-        }
-    }
-
     private func showEvaluationFeedbackIfNeeded() {
         guard game.selectedCards.count == SetGame.GameRules.setSize else {
             lastShownEvaluation = .none
             return
         }
-        let currentEvaluation = game.setEvalStatus
-        guard currentEvaluation != .none, currentEvaluation != lastShownEvaluation else { return }
+        let currentEvalState = game.setEvalStatus
+        guard currentEvalState != .none, currentEvalState != lastShownEvaluation else { return }
 
-        feedbackManager.notify(evaluation: currentEvaluation)
+        // Haptics
+        feedbackManager.notify(evaluation: currentEvalState)
 
-        let flashUIColor: UIColor = (currentEvaluation == .found) ? .systemGreen : .systemRed
-        forEachSelectedCell { cell in
-            cell.flashFeedback(color: flashUIColor)
-        }
+        // Recolor the selected trio (green/red)
+        let selectedIds = Set(game.selectedCards.map(\.id))
+        cardBoardView.applySelection(selectedIds: selectedIds, evaluation: currentEvalState)
 
-        lastShownEvaluation = currentEvaluation
+        lastShownEvaluation = currentEvalState
     }
+}
 
-    // MARK: - UI Updates
-    private func updateUI() {  // full refresh
-        view.layoutIfNeeded()
-        updateGridItemSize()
+extension SetGameViewController: UIGestureRecognizerDelegate {
 
-        UIView.performWithoutAnimation {
-            gridCollectionView.reloadData()
-            gridCollectionView.layoutIfNeeded()
-        }
+    @objc func handleBoardTap(_ recognizer: UITapGestureRecognizer) {
+        let location = recognizer.location(in: cardBoardView)
+        guard let tapped = cardBoardView.hitTest(location, with: nil) as? CardView else { return }
 
+        game.choose(this: tapped.card)
+        feedbackManager.selectionChanged()
+        syncFromGame()
+        updateUI()
         showEvaluationFeedbackIfNeeded()
     }
 
-    // Update selection only
-    private func updateSelectionUI(previouslySelected: [IndexPath]) {
-        let nowSelected = indexPathsForSelectedCards()
-        let changed = Array(Set(previouslySelected + nowSelected))
-
-        guard !changed.isEmpty else { return }
-
-        UIView.performWithoutAnimation {
-            gridCollectionView.reloadItems(at: changed)
-        }
-
-        showEvaluationFeedbackIfNeeded()
+    @objc func handleSwipeDown(_ recognizer: UISwipeGestureRecognizer) {
+        guard recognizer.state == .ended else { return }
+        dealThree()
     }
 
-    private func updateChromeInsetsIfNeeded() {
-        // Top: header bottom + a little breathing room
-        let topInset = headerView.frame.maxY + Theme.Layout.outerPadding
+    @objc func handleRotate(_ recognizer: UIRotationGestureRecognizer) {
+        // Ensure two touches (rotation requires it, but be explicit)
+        guard recognizer.numberOfTouches >= 2 else { return }
 
-        // Bottom: distance from toolbar top to bottom + breathing room
-        let bottomDistance = view.bounds.height - toolbarView.frame.minY
-        let bottomInset = bottomDistance + Theme.Layout.outerPadding
+        let thresholdRadians: CGFloat = 0.2  // ~11.5°
 
-        let newInsets = UIEdgeInsets(top: topInset, left: 0, bottom: bottomInset, right: 0)
-        guard newInsets != lastAppliedContentInsets else { return }
+        switch recognizer.state {
+        case .began:
+            didTriggerShuffleThisGesture = false
 
-        // Only snap to the top if the user is already pinned there (avoid jumps while scrolling)
-        let wasPinnedToTop = abs(gridCollectionView.contentOffset.y + lastAppliedContentInsets.top) < 1.0
+        case .changed:
+            guard !didTriggerShuffleThisGesture,
+                abs(recognizer.rotation) >= thresholdRadians
+            else { return }
 
-        gridCollectionView.contentInset = newInsets
-        gridCollectionView.verticalScrollIndicatorInsets = newInsets
-        lastAppliedContentInsets = newInsets
+            didTriggerShuffleThisGesture = true
+            shuffleCards()
 
-        if wasPinnedToTop {
-            gridCollectionView.setContentOffset(CGPoint(x: 0, y: -newInsets.top), animated: false)
+        case .ended, .cancelled, .failed:
+            didTriggerShuffleThisGesture = false
+
+        default:
+            break
         }
+    }
+
+    // Allows gestures to coexist where safe (tap + rotation can both recognize)
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
     }
 }
