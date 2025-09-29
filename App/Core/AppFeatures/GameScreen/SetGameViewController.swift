@@ -42,7 +42,7 @@ final class SetGameViewController: UIViewController {
     private func buildLayout() {
         let recipe = SetGameLayoutBuilder(
             header: headerView,
-            board: cardBoardView,
+            cardBoard: cardBoardView,
             toolbar: toolbarView
         )
         recipe.install(

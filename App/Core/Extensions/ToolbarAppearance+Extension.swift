@@ -1,4 +1,5 @@
 // App/Core/Extensions/ToolbarAppearance+Extension.swift
+
 import UIKit
 
 enum ToolbarStyle {

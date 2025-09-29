@@ -31,6 +31,7 @@ final class CardView: UIView {
     init(card: CardSet) {
         self.card = card
         super.init(frame: .zero)
+
         isOpaque = true
         backgroundColor = .systemBackground
         layer.cornerRadius = SetGameTheme.CardUI.cornerRadius
@@ -75,22 +76,26 @@ final class CardView: UIView {
         let path = card.symbol.path(in: symbolRect)
 
         switch card.shading {
+
         case .solid:
             baseColor.setFill()
             baseColor.setStroke()
             path.lineWidth = metrics.baseStrokeWidth * card.shading.strokeMultiplier
             path.fill()
             path.stroke()
+
         case .open:
             baseColor.setStroke()
             path.lineWidth = metrics.baseStrokeWidth * card.shading.strokeMultiplier
             path.stroke()
+
         case .striped:
             baseColor.setStroke()
             path.lineWidth = metrics.baseStrokeWidth * card.shading.strokeMultiplier
             path.stroke()
             let stripeColor = baseColor.withAlphaComponent(card.shading.stripeAlpha)
             let spacing = card.shading.stripeSpacing(for: metrics.glyphSize.height)
+
             UIBezierPath.drawStriped(
                 in: symbolRect,
                 clip: path,
@@ -100,6 +105,7 @@ final class CardView: UIView {
             )
         }
     }
+
 }
 
 // MARK: - Extensions

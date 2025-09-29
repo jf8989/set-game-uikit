@@ -43,7 +43,6 @@ final class CardBoardView: UIView {
         }
     }
 
-    // Replaces both methods
     func applySelection(selectedIds: Set<UUID>, evaluation: SetEvalStatus? = nil) {
         let color = evaluation?.uiColor ?? SetGameTheme.CardUI.selectionColor
         for (identifier, cardView) in viewsById {

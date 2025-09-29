@@ -71,7 +71,7 @@ extension UIBezierPath {
             path.apply(CGAffineTransform(translationX: translationX, y: translationY))
         }
 
-        // Rotate around center (if requested), then recenter once.
+        // Rotate around center, then recenter once.
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let toOrigin = CGAffineTransform(translationX: -center.x, y: -center.y)
         let fromOrigin = CGAffineTransform(translationX: center.x, y: center.y)
